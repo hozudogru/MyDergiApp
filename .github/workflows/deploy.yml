@@ -22,7 +22,7 @@ jobs:
         with:
           dotnet-version: '8.0.x'
 
-      - name: Repo yapısını göster
+      - name: Proje dosyasını bul
         run: |
           pwd
           ls -la
@@ -42,7 +42,7 @@ jobs:
           cd publish
           tar -czf ../mydergiapp.tar.gz .
 
-      - name: Sunucuda klasörleri hazırla
+      - name: Sunucuda geçici klasörü hazırla
         uses: appleboy/ssh-action@v1.0.3
         with:
           host: ${{ secrets.HOST }}
@@ -51,10 +51,10 @@ jobs:
           port: ${{ secrets.PORT }}
           script: |
             set -e
-            mkdir -p /var/www/mydergiapp
             mkdir -p /tmp/mydergiapp_deploy
+            rm -f /tmp/mydergiapp_deploy/mydergiapp.tar.gz
 
-      - name: Paketi sunucuya kopyala
+      - name: Paketi sunucuya yükle
         uses: appleboy/scp-action@v0.1.7
         with:
           host: ${{ secrets.HOST }}
@@ -64,7 +64,7 @@ jobs:
           source: "mydergiapp.tar.gz"
           target: "/tmp/mydergiapp_deploy"
 
-      - name: Canlıya al
+      - name: Canlıya al ve servisi yeniden başlat
         uses: appleboy/ssh-action@v1.0.3
         with:
           host: ${{ secrets.HOST }}
@@ -74,31 +74,56 @@ jobs:
           script: |
             set -e
 
-            mkdir -p /var/www/mydergiapp
-            mkdir -p /var/www/mydergiapp/wwwroot/uploads
+            APP_DIR="/var/www/mydergiapp"
+            TMP_DIR="/tmp/mydergiapp_deploy"
+            BACKUP_DIR="/tmp/mydergiapp_backup"
 
-            cp -f /var/www/mydergiapp/appsettings.json /tmp/appsettings.json.bak 2>/dev/null || true
-            cp -f /var/www/mydergiapp/appsettings.Production.json /tmp/appsettings.Production.json.bak 2>/dev/null || true
+            mkdir -p "$APP_DIR"
+            mkdir -p "$APP_DIR/wwwroot/uploads"
+            rm -rf "$BACKUP_DIR"
+            mkdir -p "$BACKUP_DIR"
 
-            rm -rf /var/www/mydergiapp/*
-            tar -xzf /tmp/mydergiapp_deploy/mydergiapp.tar.gz -C /var/www/mydergiapp
-
-            if [ -f /tmp/appsettings.json.bak ]; then
-              cp -f /tmp/appsettings.json.bak /var/www/mydergiapp/appsettings.json
+            # config ve upload klasörünü koru
+            if [ -f "$APP_DIR/appsettings.json" ]; then
+              cp "$APP_DIR/appsettings.json" "$BACKUP_DIR/appsettings.json"
             fi
 
-            if [ -f /tmp/appsettings.Production.json.bak ]; then
-              cp -f /tmp/appsettings.Production.json.bak /var/www/mydergiapp/appsettings.Production.json
+            if [ -f "$APP_DIR/appsettings.Production.json" ]; then
+              cp "$APP_DIR/appsettings.Production.json" "$BACKUP_DIR/appsettings.Production.json"
             fi
 
-            mkdir -p /var/www/mydergiapp/wwwroot/uploads
+            if [ -d "$APP_DIR/wwwroot/uploads" ]; then
+              cp -r "$APP_DIR/wwwroot/uploads" "$BACKUP_DIR/uploads"
+            fi
 
-            chown -R root:root /var/www/mydergiapp
-            chmod -R 755 /var/www/mydergiapp
-            chmod -R 775 /var/www/mydergiapp/wwwroot/uploads
+            # eski dosyaları temizle
+            rm -rf "$APP_DIR"/*
+
+            # yeni publish dosyalarını aç
+            tar -xzf "$TMP_DIR/mydergiapp.tar.gz" -C "$APP_DIR"
+
+            # korunan dosyaları geri koy
+            if [ -f "$BACKUP_DIR/appsettings.json" ]; then
+              cp "$BACKUP_DIR/appsettings.json" "$APP_DIR/appsettings.json"
+            fi
+
+            if [ -f "$BACKUP_DIR/appsettings.Production.json" ]; then
+              cp "$BACKUP_DIR/appsettings.Production.json" "$APP_DIR/appsettings.Production.json"
+            fi
+
+            mkdir -p "$APP_DIR/wwwroot/uploads"
+
+            if [ -d "$BACKUP_DIR/uploads" ]; then
+              cp -r "$BACKUP_DIR/uploads/." "$APP_DIR/wwwroot/uploads/" || true
+            fi
+
+            chown -R root:root "$APP_DIR"
+            chmod -R 755 "$APP_DIR"
+            chmod -R 775 "$APP_DIR/wwwroot/uploads"
 
             systemctl daemon-reload
             systemctl restart MyDergiApp
             systemctl status MyDergiApp --no-pager -l
 
-            rm -rf /tmp/mydergiapp_deploy
+            rm -rf "$TMP_DIR"
+            rm -rf "$BACKUP_DIR"
