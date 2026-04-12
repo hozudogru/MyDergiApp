@@ -22,73 +22,17 @@ jobs:
         with:
           dotnet-version: '8.0.x'
 
+      - name: Repo yapısını göster
+        run: |
+          pwd
+          ls -la
+          find . -name "*.csproj"
+
       - name: Restore
-        run: dotnet restore MyDergiApp/MyDergiApp.csproj
+        run: dotnet restore MyDergiApp.csproj
 
       - name: Build
-        run: dotnet build MyDergiApp/MyDergiApp.csproj --configuration Release --no-restore
+        run: dotnet build MyDergiApp.csproj --configuration Release --no-restore
 
       - name: Publish
-        run: dotnet publish MyDergiApp/MyDergiApp.csproj -c Release -o ./publish
-
-      - name: Sunucuda klasörleri hazırla
-        uses: appleboy/ssh-action@v1.0.3
-        with:
-          host: ${{ secrets.HOST }}
-          username: ${{ secrets.USERNAME }}
-          password: ${{ secrets.PASSWORD }}
-          port: ${{ secrets.PORT }}
-          script: |
-            set -e
-            mkdir -p /var/www/mydergiapp
-            rm -rf /tmp/mydergiapp_publish
-            mkdir -p /tmp/mydergiapp_publish
-
-      - name: Publish dosyalarını sunucuya kopyala
-        uses: appleboy/scp-action@v0.1.7
-        with:
-          host: ${{ secrets.HOST }}
-          username: ${{ secrets.USERNAME }}
-          password: ${{ secrets.PASSWORD }}
-          port: ${{ secrets.PORT }}
-          source: "publish/*"
-          target: "/tmp/mydergiapp_publish"
-
-      - name: Canlıya al
-        uses: appleboy/ssh-action@v1.0.3
-        with:
-          host: ${{ secrets.HOST }}
-          username: ${{ secrets.USERNAME }}
-          password: ${{ secrets.PASSWORD }}
-          port: ${{ secrets.PORT }}
-          script: |
-            set -e
-
-            # upload klasörü kalıcı olsun
-            mkdir -p /var/www/mydergiapp/wwwroot/uploads
-
-            # geçici klasörden canlıya taşı
-            rsync -av --delete \
-              --exclude 'appsettings.json' \
-              --exclude 'appsettings.Production.json' \
-              --exclude 'wwwroot/uploads' \
-              /tmp/mydergiapp_publish/publish/ /var/www/mydergiapp/
-
-            # publish sonrası uploads tekrar garanti altına alınsın
-            mkdir -p /var/www/mydergiapp/wwwroot/uploads
-
-            # izinler
-            chown -R root:root /var/www/mydergiapp
-            chmod -R 755 /var/www/mydergiapp
-            chmod -R 775 /var/www/mydergiapp/wwwroot/uploads
-
-            # eski manuel çalışan process varsa öldür
-            pkill -f "MyDergiApp.dll" || true
-
-            # servisi yeniden başlat
-            systemctl daemon-reload
-            systemctl restart MyDergiApp
-            systemctl status MyDergiApp --no-pager -l
-
-            # geçici klasörü temizle
-            rm -rf /tmp/mydergiapp_publish
+        run: dotnet publish MyDergiApp.csproj -c Release -o ./publish
