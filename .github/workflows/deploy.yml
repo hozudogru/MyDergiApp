@@ -5,6 +5,10 @@ on:
     branches:
       - main
 
+concurrency:
+  group: mydergiapp-production
+  cancel-in-progress: true
+
 jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
@@ -27,7 +31,7 @@ jobs:
       - name: Publish
         run: dotnet publish MyDergiApp/MyDergiApp.csproj -c Release -o ./publish
 
-      - name: Sunucuda geçici deploy klasörü oluştur
+      - name: Sunucuda klasörleri hazırla
         uses: appleboy/ssh-action@v1.0.3
         with:
           host: ${{ secrets.HOST }}
@@ -35,7 +39,10 @@ jobs:
           password: ${{ secrets.PASSWORD }}
           port: ${{ secrets.PORT }}
           script: |
-            mkdir -p /var/www/mydergiapp_deploy
+            set -e
+            mkdir -p /var/www/mydergiapp
+            rm -rf /tmp/mydergiapp_publish
+            mkdir -p /tmp/mydergiapp_publish
 
       - name: Publish dosyalarını sunucuya kopyala
         uses: appleboy/scp-action@v0.1.7
@@ -45,9 +52,9 @@ jobs:
           password: ${{ secrets.PASSWORD }}
           port: ${{ secrets.PORT }}
           source: "publish/*"
-          target: "/var/www/mydergiapp_deploy"
+          target: "/tmp/mydergiapp_publish"
 
-      - name: Canlıya al ve servisi restart et
+      - name: Canlıya al
         uses: appleboy/ssh-action@v1.0.3
         with:
           host: ${{ secrets.HOST }}
@@ -55,11 +62,33 @@ jobs:
           password: ${{ secrets.PASSWORD }}
           port: ${{ secrets.PORT }}
           script: |
-            mkdir -p /var/www/mydergiapp
+            set -e
+
+            # upload klasörü kalıcı olsun
+            mkdir -p /var/www/mydergiapp/wwwroot/uploads
+
+            # geçici klasörden canlıya taşı
             rsync -av --delete \
               --exclude 'appsettings.json' \
               --exclude 'appsettings.Production.json' \
               --exclude 'wwwroot/uploads' \
-              /var/www/mydergiapp_deploy/publish/ /var/www/mydergiapp/
+              /tmp/mydergiapp_publish/publish/ /var/www/mydergiapp/
+
+            # publish sonrası uploads tekrar garanti altına alınsın
+            mkdir -p /var/www/mydergiapp/wwwroot/uploads
+
+            # izinler
+            chown -R root:root /var/www/mydergiapp
+            chmod -R 755 /var/www/mydergiapp
+            chmod -R 775 /var/www/mydergiapp/wwwroot/uploads
+
+            # eski manuel çalışan process varsa öldür
+            pkill -f "MyDergiApp.dll" || true
+
+            # servisi yeniden başlat
+            systemctl daemon-reload
             systemctl restart MyDergiApp
-            systemctl status MyDergiApp --no-pager
+            systemctl status MyDergiApp --no-pager -l
+
+            # geçici klasörü temizle
+            rm -rf /tmp/mydergiapp_publish
