@@ -1,0 +1,51 @@
+@model IEnumerable<MyDergiApp.Entities.Submission>
+@using MyDergiApp.Models.Enums
+
+@{
+    ViewData["Title"] = "Makalelerim";
+}
+
+<h2>Makaleler</h2>
+
+<p>
+    @if (User.IsInRole("Author"))
+    {
+        <a asp-action="Create" class="btn btn-primary">Yeni Makale</a>
+    }
+</p>
+
+<table class="table table-bordered table-striped">
+    <thead>
+        <tr>
+            <th>Başlık</th>
+            <th>Yazar</th>
+            <th>Durum</th>
+            <th>Oluşturulma</th>
+            <th>İşlem</th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (var item in Model)
+        {
+            <tr>
+                <td>@item.Title</td>
+                <td>@item.Author?.FullName</td>
+                <td>@item.Status</td>
+                <td>@item.CreatedAt.ToLocalTime().ToString("dd.MM.yyyy HH:mm")</td>
+                <td>
+                    <a asp-action="Detail" asp-route-id="@item.Id" class="btn btn-sm btn-info">Detay</a>
+
+                    @if (User.IsInRole("Author") && item.Status == "Submitted")
+                    {
+                        <a asp-action="Edit" asp-route-id="@item.Id" class="btn btn-sm btn-warning">Düzenle</a>
+                    }
+
+                    @if (User.IsInRole("Admin") || User.IsInRole("Editor"))
+                    {
+                        <a asp-action="UpdateStatus" asp-route-id="@item.Id" class="btn btn-sm btn-secondary">Durum</a>
+                    }
+                </td>
+            </tr>
+        }
+    </tbody>
+</table>

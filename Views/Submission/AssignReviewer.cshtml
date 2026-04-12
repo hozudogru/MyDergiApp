@@ -1,0 +1,32 @@
+﻿@model MyDergiApp.ViewModels.Submissions.AssignReviewerViewModel
+
+@{
+    ViewData["Title"] = "Reviewer Ata";
+}
+
+<h2>Reviewer Ata</h2>
+
+<div class="card">
+    <div class="card-body">
+        <h5 class="card-title">@Model.SubmissionTitle</h5>
+
+        <form asp-action="AssignReviewer" method="post">
+            <input type="hidden" asp-for="SubmissionId" />
+
+            <div class="mb-3">
+                <label asp-for="ReviewerId" class="form-label"></label>
+                <select asp-for="ReviewerId" asp-items="Model.Reviewers" class="form-select">
+                    <option value="">Seçiniz</option>
+                </select>
+                <span asp-validation-for="ReviewerId" class="text-danger"></span>
+            </div>
+
+            <button type="submit" class="btn btn-primary">Ata</button>
+            <a asp-action="Detail" asp-route-id="@Model.SubmissionId" class="btn btn-secondary">Geri</a>
+        </form>
+    </div>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

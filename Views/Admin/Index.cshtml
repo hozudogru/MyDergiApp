@@ -1,0 +1,34 @@
+@{
+    ViewData["Title"] = "Admin Paneli";
+}
+
+<div class="container mt-4">
+    <h1>Admin Paneli</h1>
+
+    <div class="alert alert-success">
+        Admin olarak giriş yaptınız.
+    </div>
+
+    <p>Hoş geldiniz, @User.Identity?.Name</p>
+
+    <div class="row mt-4">
+        <div class="col-md-4 mb-3">
+            <div class="card shadow-sm">
+                <div class="card-body">
+                    <h5 class="card-title">Dergiler</h5>
+                    <p class="card-text">Dergi bilgilerini yönetin.</p>
+                    <a asp-controller="Journal" asp-action="Index" class="btn btn-primary">Dergilere Git</a>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4 mb-3">
+            <div class="card shadow-sm">
+                <div class="card-body">
+                    <h5 class="card-title">Makaleler</h5>
+                    <p class="card-text">Makale gönderimlerini izleyin.</p>
+                    <a asp-controller="Submission" asp-action="Index" class="btn btn-primary">Makalelere Git</a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

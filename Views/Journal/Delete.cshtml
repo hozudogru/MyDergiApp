@@ -1,0 +1,30 @@
+@model MyDergiApp.Entities.Journal
+
+@{
+    ViewData["Title"] = "Dergi Sil";
+}
+
+<h1>Dergi Sil</h1>
+
+<h4>Bu kaydı silmek istediğine emin misin?</h4>
+<hr />
+
+<dl class="row">
+    <dt class="col-sm-2">Dergi Adı</dt>
+    <dd class="col-sm-10">@Model.Name</dd>
+
+    <dt class="col-sm-2">ISSN</dt>
+    <dd class="col-sm-10">@Model.Issn</dd>
+
+    <dt class="col-sm-2">Açıklama</dt>
+    <dd class="col-sm-10">@Model.Description</dd>
+
+    <dt class="col-sm-2">Aktif</dt>
+    <dd class="col-sm-10">@(Model.IsActive ? "Evet" : "Hayır")</dd>
+</dl>
+
+<form asp-action="Delete" method="post">
+    <input type="hidden" asp-for="Id" />
+    <button type="submit" class="btn btn-danger">Sil</button>
+    <a asp-action="Index" class="btn btn-secondary">Vazgeç</a>
+</form>

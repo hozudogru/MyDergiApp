@@ -1,0 +1,36 @@
+﻿@model MyDergiApp.ViewModels.Submissions.SubmissionStatusUpdateViewModel
+
+@{
+    ViewData["Title"] = "Makale Durumu Güncelle";
+}
+
+<h2>Makale Durumu Güncelle</h2>
+
+<form asp-action="UpdateStatus" method="post">
+    <input type="hidden" asp-for="SubmissionId" />
+
+    <div class="mb-3">
+        <label asp-for="Status" class="form-label"></label>
+        <select asp-for="Status" class="form-select">
+            <option value="Submitted">Submitted</option>
+            <option value="InReview">InReview</option>
+            <option value="RevisionRequested">RevisionRequested</option>
+            <option value="Accepted">Accepted</option>
+            <option value="Rejected">Rejected</option>
+        </select>
+        <span asp-validation-for="Status" class="text-danger"></span>
+    </div>
+
+    <div class="mb-3">
+        <label asp-for="EditorNote" class="form-label"></label>
+        <textarea asp-for="EditorNote" class="form-control" rows="5"></textarea>
+        <span asp-validation-for="EditorNote" class="text-danger"></span>
+    </div>
+
+    <button type="submit" class="btn btn-primary">Kaydet</button>
+    <a asp-action="Detail" asp-route-id="@Model.SubmissionId" class="btn btn-secondary">İptal</a>
+</form>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

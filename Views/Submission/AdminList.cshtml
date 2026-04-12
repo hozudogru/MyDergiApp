@@ -1,0 +1,38 @@
+﻿@model IEnumerable<MyDergiApp.Entities.Submission>
+@{
+    ViewData["Title"] = "Tüm Makaleler";
+}
+
+<h2>Tüm Makaleler</h2>
+
+<table class="table table-bordered table-hover">
+    <thead>
+        <tr>
+            <th>ID</th>
+            <th>Başlık</th>
+            <th>Yazar</th>
+            <th>E-posta</th>
+            <th>Durum</th>
+            <th>Tarih</th>
+            <th>İşlem</th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (var item in Model)
+        {
+            <tr>
+                <td>@item.Id</td>
+                <td>@item.Title</td>
+                <td>@item.Author?.FullName</td>
+                <td>@item.Author?.Email</td>
+                <td>@item.Status</td>
+                <td>@item.CreatedAt.ToLocalTime().ToString("dd.MM.yyyy HH:mm")</td>
+                <td>
+                    <a asp-action="Detail" asp-route-id="@item.Id" class="btn btn-sm btn-info">Detay</a>
+                    <a asp-action="Edit" asp-route-id="@item.Id" class="btn btn-sm btn-warning">Düzenle</a>
+                    <a asp-action="UpdateStatus" asp-route-id="@item.Id" class="btn btn-sm btn-secondary">Durum</a>
+                </td>
+            </tr>
+        }
+    </tbody>
+</table>

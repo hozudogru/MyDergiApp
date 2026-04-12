@@ -1,0 +1,84 @@
+﻿@model MyDergiApp.ViewModels.Submissions.SubmissionDetailViewModel
+
+@{
+    ViewData["Title"] = "Makale Detayı";
+}
+
+<h2>Makale Detayı</h2>
+
+<div class="card">
+    <div class="card-body">
+        <h4 class="card-title">@Model.Title</h4>
+        <hr />
+
+        <p><strong>Yazar:</strong> @Model.AuthorName</p>
+        <p><strong>E-posta:</strong> @Model.AuthorEmail</p>
+        <p><strong>Durum:</strong> @Model.Status</p>
+        <p><strong>Oluşturulma:</strong> @Model.CreatedAt.ToLocalTime().ToString("dd.MM.yyyy HH:mm")</p>
+        <p><strong>Güncellenme:</strong> @(Model.UpdatedAt.HasValue? Model.UpdatedAt.Value.ToLocalTime().ToString("dd.MM.yyyy HH:mm") : "-")</p>
+        <p><strong>Anahtar Kelimeler:</strong> @Model.Keywords</p>
+
+        <div class="mt-4">
+            <h5>Özet</h5>
+            <p style="white-space: pre-line;">@Model.Abstract</p>
+        </div>
+
+        @if (!string.IsNullOrWhiteSpace(Model.EditorNote))
+        {
+            <div class="alert alert-info mt-3">
+                <strong>Editör Notu:</strong><br />
+                @Model.EditorNote
+            </div>
+        }
+
+        <div class="mt-3">
+            @if (Model.CanEdit)
+            {
+                <a asp-action="Edit" asp-route-id="@Model.Id" class="btn btn-warning">Düzenle</a>
+            }
+
+            @if (Model.CanManageStatus)
+            {
+                <a asp-action="UpdateStatus" asp-route-id="@Model.Id" class="btn btn-secondary">Durum Güncelle</a>
+            }
+
+            <a asp-action="Index" class="btn btn-outline-secondary">Listeye Dön</a>
+            @if (User.IsInRole("Admin") || User.IsInRole("Editor"))
+            {
+                <div class="mt-3">
+                    <a asp-action="AssignReviewer" asp-route-id="@Model.Id" class="btn btn-primary">
+                        Reviewer Ata
+                    </a>
+                </div>
+            }
+
+            @if (Model.Reviewers != null && Model.Reviewers.Any())
+            {
+                <div class="mt-4">
+                    <h4>Atanan Reviewerlar</h4>
+                    <table class="table table-bordered">
+                        <thead>
+                            <tr>
+                                <th>Durum</th>
+                                <th>Atanma Tarihi</th>
+                                <th>Tamamlanma Tarihi</th>
+                                <th>Review Notu</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var reviewer in Model.Reviewers)
+                            {
+                                <tr>
+                                    <td>@reviewer.Status</td>
+                                    <td>@reviewer.AssignedAt.ToLocalTime().ToString("dd.MM.yyyy HH:mm")</td>
+                                    <td>@(reviewer.CompletedAt.HasValue? reviewer.CompletedAt.Value.ToLocalTime().ToString("dd.MM.yyyy HH:mm") : "-")</td>
+                                    <td>@reviewer.ReviewNote</td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            }
+        </div>
+    </div>
+</div>

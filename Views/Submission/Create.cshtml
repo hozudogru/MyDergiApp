@@ -1,0 +1,34 @@
+@model MyDergiApp.ViewModels.Submissions.SubmissionCreateEditViewModel
+
+@{
+    ViewData["Title"] = "Yeni Makale";
+}
+
+<h2>Yeni Makale</h2>
+
+<form asp-action="Create" method="post">
+    <div class="mb-3">
+        <label asp-for="Title" class="form-label"></label>
+        <input asp-for="Title" class="form-control" />
+        <span asp-validation-for="Title" class="text-danger"></span>
+    </div>
+
+    <div class="mb-3">
+        <label asp-for="Abstract" class="form-label"></label>
+        <textarea asp-for="Abstract" class="form-control" rows="8"></textarea>
+        <span asp-validation-for="Abstract" class="text-danger"></span>
+    </div>
+
+    <div class="mb-3">
+        <label asp-for="Keywords" class="form-label"></label>
+        <input asp-for="Keywords" class="form-control" />
+        <span asp-validation-for="Keywords" class="text-danger"></span>
+    </div>
+
+    <button type="submit" class="btn btn-success">Kaydet</button>
+    <a asp-action="Index" class="btn btn-secondary">Geri</a>
+</form>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

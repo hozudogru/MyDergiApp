@@ -1,0 +1,32 @@
+﻿@model MyDergiApp.ViewModels.Submissions.ReviewSubmitViewModel
+
+@{
+    ViewData["Title"] = "Review Gönder";
+}
+
+<h2>Review Gönder</h2>
+
+<div class="card">
+    <div class="card-body">
+        <h5 class="card-title">@Model.SubmissionTitle</h5>
+
+        <form asp-action="SubmitReview" method="post">
+            <input type="hidden" asp-for="AssignmentId" />
+            <input type="hidden" asp-for="SubmissionId" />
+            <input type="hidden" asp-for="SubmissionTitle" />
+
+            <div class="mb-3">
+                <label asp-for="ReviewNote" class="form-label"></label>
+                <textarea asp-for="ReviewNote" class="form-control" rows="8"></textarea>
+                <span asp-validation-for="ReviewNote" class="text-danger"></span>
+            </div>
+
+            <button type="submit" class="btn btn-success">Kaydet</button>
+            <a asp-action="MyReviews" class="btn btn-secondary">Geri</a>
+        </form>
+    </div>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

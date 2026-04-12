@@ -1,0 +1,28 @@
+@model MyDergiApp.Entities.Journal
+
+@{
+    ViewData["Title"] = "Dergi Detayı";
+}
+
+<h1>Dergi Detayı</h1>
+
+<hr />
+
+<dl class="row">
+    <dt class="col-sm-2">Dergi Adı</dt>
+    <dd class="col-sm-10">@Model.Name</dd>
+
+    <dt class="col-sm-2">ISSN</dt>
+    <dd class="col-sm-10">@Model.Issn</dd>
+
+    <dt class="col-sm-2">Açıklama</dt>
+    <dd class="col-sm-10">@Model.Description</dd>
+
+    <dt class="col-sm-2">Aktif</dt>
+    <dd class="col-sm-10">@(Model.IsActive ? "Evet" : "Hayır")</dd>
+</dl>
+
+<p>
+    <a asp-action="Edit" asp-route-id="@Model.Id" class="btn btn-warning">Düzenle</a>
+    <a asp-action="Index" class="btn btn-secondary">Geri</a>
+</p>

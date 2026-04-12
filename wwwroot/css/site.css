@@ -1,0 +1,93 @@
+body {
+    margin: 0;
+    font-family: "Segoe UI", Arial, sans-serif;
+    background: #f4f6f9;
+    color: #1f2937;
+}
+
+.admin-shell {
+    display: flex;
+    min-height: 100vh;
+}
+
+.admin-sidebar {
+    width: 260px;
+    background: linear-gradient(180deg, #1e293b 0%, #0f172a 100%);
+    color: #fff;
+    padding: 24px 18px;
+}
+
+.sidebar-brand {
+    margin-bottom: 30px;
+    padding-bottom: 18px;
+    border-bottom: 1px solid rgba(255,255,255,.12);
+}
+
+    .sidebar-brand a {
+        display: block;
+        color: #fff;
+        font-size: 1.5rem;
+        font-weight: 700;
+        text-decoration: none;
+    }
+
+    .sidebar-brand span {
+        font-size: .85rem;
+        color: #cbd5e1;
+    }
+
+.sidebar-nav {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.sidebar-link {
+    color: #dbeafe;
+    text-decoration: none;
+    padding: 12px 14px;
+    border-radius: 10px;
+    transition: .2s;
+    font-weight: 500;
+}
+
+    .sidebar-link:hover {
+        background: rgba(255,255,255,.12);
+        color: #fff;
+    }
+
+.admin-main {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+}
+
+.admin-header {
+    background: #fff;
+    padding: 18px 28px;
+    border-bottom: 1px solid #e5e7eb;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.admin-title {
+    font-size: 1.5rem;
+    font-weight: 700;
+    margin: 0;
+}
+
+.admin-content {
+    padding: 28px;
+}
+
+.userbar-wrap {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.userbar-name {
+    color: #1f2937;
+    font-weight: 500;
+}

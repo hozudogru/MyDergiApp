@@ -1,0 +1,37 @@
+﻿@model IEnumerable<MyDergiApp.ViewModels.Submissions.ReviewerAssignmentListItemViewModel>
+
+@{
+    ViewData["Title"] = "Değerlendirmelerim";
+}
+
+<h2>Değerlendirmelerim</h2>
+
+<table class="table table-bordered table-striped">
+    <thead>
+        <tr>
+            <th>Makale</th>
+            <th>Yazar</th>
+            <th>Durum</th>
+            <th>Atanma</th>
+            <th>Tamamlanma</th>
+            <th>İşlem</th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (var item in Model)
+        {
+            <tr>
+                <td>@item.SubmissionTitle</td>
+                <td>@item.AuthorName</td>
+                <td>@item.Status</td>
+                <td>@item.AssignedAt.ToLocalTime().ToString("dd.MM.yyyy HH:mm")</td>
+                <td>@(item.CompletedAt.HasValue? item.CompletedAt.Value.ToLocalTime().ToString("dd.MM.yyyy HH:mm") : "-")</td>
+                <td>
+                    <a asp-action="SubmitReview" asp-route-id="@item.AssignmentId" class="btn btn-sm btn-primary">
+                        Review Gir
+                    </a>
+                </td>
+            </tr>
+        }
+    </tbody>
+</table>
