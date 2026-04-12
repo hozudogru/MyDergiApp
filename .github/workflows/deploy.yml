@@ -1,0 +1,65 @@
+﻿name: Deploy MyDergiApp
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Kodu çek
+        uses: actions/checkout@v4
+
+      - name: .NET 8 kur
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+
+      - name: Restore
+        run: dotnet restore MyDergiApp/MyDergiApp.csproj
+
+      - name: Build
+        run: dotnet build MyDergiApp/MyDergiApp.csproj --configuration Release --no-restore
+
+      - name: Publish
+        run: dotnet publish MyDergiApp/MyDergiApp.csproj -c Release -o ./publish
+
+      - name: Sunucuda geçici deploy klasörü oluştur
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.HOST }}
+          username: ${{ secrets.USERNAME }}
+          password: ${{ secrets.PASSWORD }}
+          port: ${{ secrets.PORT }}
+          script: |
+            mkdir -p /var/www/mydergiapp_deploy
+
+      - name: Publish dosyalarını sunucuya kopyala
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.HOST }}
+          username: ${{ secrets.USERNAME }}
+          password: ${{ secrets.PASSWORD }}
+          port: ${{ secrets.PORT }}
+          source: "publish/*"
+          target: "/var/www/mydergiapp_deploy"
+
+      - name: Canlıya al ve servisi restart et
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.HOST }}
+          username: ${{ secrets.USERNAME }}
+          password: ${{ secrets.PASSWORD }}
+          port: ${{ secrets.PORT }}
+          script: |
+            mkdir -p /var/www/mydergiapp
+            rsync -av --delete \
+              --exclude 'appsettings.json' \
+              --exclude 'appsettings.Production.json' \
+              --exclude 'wwwroot/uploads' \
+              /var/www/mydergiapp_deploy/publish/ /var/www/mydergiapp/
+            systemctl restart MyDergiApp
+            systemctl status MyDergiApp --no-pager
