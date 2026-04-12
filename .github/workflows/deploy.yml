@@ -29,10 +29,76 @@ jobs:
           find . -name "*.csproj"
 
       - name: Restore
-        run: dotnet restore MyDergiApp.csproj
+        run: dotnet restore ./MyDergiApp.csproj
 
       - name: Build
-        run: dotnet build MyDergiApp.csproj --configuration Release --no-restore
+        run: dotnet build ./MyDergiApp.csproj --configuration Release --no-restore
 
       - name: Publish
-        run: dotnet publish MyDergiApp.csproj -c Release -o ./publish
+        run: dotnet publish ./MyDergiApp.csproj -c Release -o ./publish
+
+      - name: Publish çıktısını paketle
+        run: |
+          cd publish
+          tar -czf ../mydergiapp.tar.gz .
+
+      - name: Sunucuda klasörleri hazırla
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.HOST }}
+          username: ${{ secrets.USERNAME }}
+          password: ${{ secrets.PASSWORD }}
+          port: ${{ secrets.PORT }}
+          script: |
+            set -e
+            mkdir -p /var/www/mydergiapp
+            mkdir -p /tmp/mydergiapp_deploy
+
+      - name: Paketi sunucuya kopyala
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.HOST }}
+          username: ${{ secrets.USERNAME }}
+          password: ${{ secrets.PASSWORD }}
+          port: ${{ secrets.PORT }}
+          source: "mydergiapp.tar.gz"
+          target: "/tmp/mydergiapp_deploy"
+
+      - name: Canlıya al
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.HOST }}
+          username: ${{ secrets.USERNAME }}
+          password: ${{ secrets.PASSWORD }}
+          port: ${{ secrets.PORT }}
+          script: |
+            set -e
+
+            mkdir -p /var/www/mydergiapp
+            mkdir -p /var/www/mydergiapp/wwwroot/uploads
+
+            cp -f /var/www/mydergiapp/appsettings.json /tmp/appsettings.json.bak 2>/dev/null || true
+            cp -f /var/www/mydergiapp/appsettings.Production.json /tmp/appsettings.Production.json.bak 2>/dev/null || true
+
+            rm -rf /var/www/mydergiapp/*
+            tar -xzf /tmp/mydergiapp_deploy/mydergiapp.tar.gz -C /var/www/mydergiapp
+
+            if [ -f /tmp/appsettings.json.bak ]; then
+              cp -f /tmp/appsettings.json.bak /var/www/mydergiapp/appsettings.json
+            fi
+
+            if [ -f /tmp/appsettings.Production.json.bak ]; then
+              cp -f /tmp/appsettings.Production.json.bak /var/www/mydergiapp/appsettings.Production.json
+            fi
+
+            mkdir -p /var/www/mydergiapp/wwwroot/uploads
+
+            chown -R root:root /var/www/mydergiapp
+            chmod -R 755 /var/www/mydergiapp
+            chmod -R 775 /var/www/mydergiapp/wwwroot/uploads
+
+            systemctl daemon-reload
+            systemctl restart MyDergiApp
+            systemctl status MyDergiApp --no-pager -l
+
+            rm -rf /tmp/mydergiapp_deploy
