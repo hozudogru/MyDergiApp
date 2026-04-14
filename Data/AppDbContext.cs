@@ -35,5 +35,11 @@ public class AppDbContext : IdentityDbContext<AppUser>
             .WithMany()
             .HasForeignKey(sr => sr.ReviewerId)
             .OnDelete(DeleteBehavior.Restrict);
+
+        builder.Entity<Submission>()
+            .HasOne(s => s.Editor)
+            .WithMany()
+            .HasForeignKey(s => s.EditorId)
+            .OnDelete(DeleteBehavior.Restrict);
     }
 }

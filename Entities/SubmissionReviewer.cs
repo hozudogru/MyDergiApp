@@ -1,5 +1,6 @@
 ﻿using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
+using MyDergiApp.Models.Enums;
 
 namespace MyDergiApp.Entities
 {
@@ -21,12 +22,15 @@ namespace MyDergiApp.Entities
 
         [Required]
         [StringLength(50)]
-        public string Status { get; set; } = "Assigned";
+        public ReviewStatus Status { get; set; } = ReviewStatus.Assigned;
 
         [StringLength(2000)]
         public string? ReviewNote { get; set; }
 
         public DateTime AssignedAt { get; set; } = DateTime.UtcNow;
         public DateTime? CompletedAt { get; set; }
+        [StringLength(50)]
+        public string? Recommendation { get; set; }
+        // Accept / MinorRevision / MajorRevision / Reject
     }
 }

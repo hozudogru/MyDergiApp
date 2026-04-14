@@ -1,93 +1,157 @@
+html {
+    font-size: 14px;
+}
+
+@media (min-width: 768px) {
+    html {
+        font-size: 16px;
+    }
+}
+
 body {
     margin: 0;
-    font-family: "Segoe UI", Arial, sans-serif;
-    background: #f4f6f9;
-    color: #1f2937;
 }
 
-.admin-shell {
+.nav-link.active {
+    background-color: #0d6efd !important;
+    color: #fff !important;
+}
+
+.table > :not(caption) > * > * {
+    vertical-align: middle;
+}
+.dataTables_wrapper .dataTables_filter input {
+    margin-left: 0.5rem;
+}
+
+.dataTables_wrapper .dataTables_length select {
+    margin: 0 0.5rem;
+}
+
+table.dataTable tbody td {
+    vertical-align: middle;
+}
+.role-badge {
+    display: inline-block;
+    padding: 6px 10px;
+    border-radius: 999px;
+    font-size: 12px;
+    font-weight: 600;
+    line-height: 1;
+    border: 1px solid transparent;
     display: flex;
-    min-height: 100vh;
+    flex-wrap: wrap;
+    gap: 6px;
 }
 
-.admin-sidebar {
-    width: 260px;
-    background: linear-gradient(180deg, #1e293b 0%, #0f172a 100%);
-    color: #fff;
-    padding: 24px 18px;
+.role-admin {
+    background-color: #fee2e2;
+    color: #991b1b;
+    border-color: #fecaca;
 }
 
-.sidebar-brand {
-    margin-bottom: 30px;
-    padding-bottom: 18px;
-    border-bottom: 1px solid rgba(255,255,255,.12);
+.role-editor {
+    background-color: #dbeafe;
+    color: #1d4ed8;
+    border-color: #bfdbfe;
 }
 
-    .sidebar-brand a {
-        display: block;
-        color: #fff;
-        font-size: 1.5rem;
-        font-weight: 700;
-        text-decoration: none;
-    }
+.role-reviewer {
+    background-color: #fef3c7;
+    color: #92400e;
+    border-color: #fde68a;
+}
 
-    .sidebar-brand span {
-        font-size: .85rem;
-        color: #cbd5e1;
-    }
+.role-author {
+    background-color: #e5e7eb;
+    color: #374151;
+    border-color: #d1d5db;
+}
 
-.sidebar-nav {
+.role-reader {
+    background-color: #dcfce7;
+    color: #166534;
+    border-color: #bbf7d0;
+}
+.btn i {
+    margin-right: 4px;
+}
+.action-buttons {
     display: flex;
-    flex-direction: column;
     gap: 8px;
-}
+    align-items: center;
+    flex-wrap: nowrap;
 
-.sidebar-link {
-    color: #dbeafe;
-    text-decoration: none;
-    padding: 12px 14px;
-    border-radius: 10px;
-    transition: .2s;
-    font-weight: 500;
-}
-
-    .sidebar-link:hover {
-        background: rgba(255,255,255,.12);
-        color: #fff;
+    .action-buttons i {
+        margin-right: 5px;
     }
-
-.admin-main {
-    flex: 1;
-    display: flex;
-    flex-direction: column;
 }
 
-.admin-header {
-    background: #fff;
-    padding: 18px 28px;
-    border-bottom: 1px solid #e5e7eb;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
+    .action-buttons .btn {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        white-space: nowrap;
+    }
+.role-cell {
+    min-width: 150px;
 }
-
-.admin-title {
-    font-size: 1.5rem;
-    font-weight: 700;
-    margin: 0;
-}
-
-.admin-content {
-    padding: 28px;
-}
-
-.userbar-wrap {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-}
-
-.userbar-name {
-    color: #1f2937;
+.role-badge {
+    padding: 4px 10px;
+    border-radius: 20px;
+    font-size: 12px;
     font-weight: 500;
+}
+
+.role-admin {
+    background: #ffe2e2;
+    color: #b42318;
+}
+
+.role-editor {
+    background: #e0f2fe;
+    color: #0369a1;
+}
+
+.role-reviewer {
+    background: #fff7ed;
+    color: #c2410c;
+}
+
+.role-author {
+    background: #f1f5f9;
+    color: #334155;
+}
+
+.role-reader {
+    background: #ecfdf5;
+    color: #047857;
+}
+table.dataTable thead th {
+    font-weight: 600;
+}
+
+table.dataTable tbody tr:hover {
+    background-color: #f8fafc;
+}
+.table td, .table th {
+    vertical-align: middle;
+}
+
+.table tbody tr {
+    transition: all 0.2s ease;
+}
+
+    .table tbody tr:hover {
+        background: #f8fafc;
+        transform: scale(1.003);
+    }
+.btn-primary {
+    background: linear-gradient(135deg, #3b82f6, #2563eb);
+    border: none;
+}
+
+.btn-danger {
+    background: linear-gradient(135deg, #ef4444, #dc2626);
+    border: none;
 }

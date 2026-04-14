@@ -1,5 +1,6 @@
-@model IEnumerable<MyDergiApp.Entities.Submission>
 @using MyDergiApp.Models.Enums
+@model IEnumerable<MyDergiApp.Entities.Submission>
+
 
 @{
     ViewData["Title"] = "Makalelerim";
@@ -35,7 +36,7 @@
                 <td>
                     <a asp-action="Detail" asp-route-id="@item.Id" class="btn btn-sm btn-info">Detay</a>
 
-                    @if (User.IsInRole("Author") && item.Status == "Submitted")
+                    @if (User.IsInRole("Author") && item.Status == SubmissionStatus.Submitted)
                     {
                         <a asp-action="Edit" asp-route-id="@item.Id" class="btn btn-sm btn-warning">Düzenle</a>
                     }

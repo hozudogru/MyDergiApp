@@ -12,5 +12,7 @@ namespace MyDergiApp.ViewModels.Submissions
         [StringLength(2000)]
         [Display(Name = "Reviewer Notu")]
         public string ReviewNote { get; set; } = string.Empty;
+        [Required]
+        public string Recommendation { get; set; } = "";
     }
 }

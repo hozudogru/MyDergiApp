@@ -1,4 +1,6 @@
-﻿namespace MyDergiApp.ViewModels.Submissions
+﻿using MyDergiApp.Models.Enums;
+
+namespace MyDergiApp.ViewModels.Submissions
 {
     public class SubmissionDetailViewModel
     {
@@ -10,7 +12,7 @@
         public DateTime CreatedAt { get; set; }
         public DateTime? UpdatedAt { get; set; }
 
-        public string Status { get; set; } = string.Empty;
+        public SubmissionStatus Status { get; set; }
         public string? EditorNote { get; set; }
 
         public string AuthorId { get; set; } = string.Empty;

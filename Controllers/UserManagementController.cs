@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Mvc;
 using MyDergiApp.Entities;
 using MyDergiApp.ViewModels;
 using MyDergiApp.ViewModels.Users;
+using System.Security.Claims;
 
 [Authorize(Roles = "Admin")]
 public class UserManagementController : Controller
@@ -21,26 +22,30 @@ public class UserManagementController : Controller
 
     public async Task<IActionResult> Index()
     {
-        var users = _userManager.Users.ToList();
-        var model = new List<UserListViewModel>();
+        var users = new List<UserListViewModel>();
 
-        foreach (var u in users)
+        foreach (var user in _userManager.Users.ToList())
         {
-            var roles = await _userManager.GetRolesAsync(u);
+            var roles = await _userManager.GetRolesAsync(user);
 
-            model.Add(new UserListViewModel
+            users.Add(new UserListViewModel
             {
-                Id = u.Id,
-                FullName = u.FullName ?? "",
-                Email = u.Email ?? "",
-                IsActive = u.IsActive,
-                RoleName = roles.Any() ? string.Join(", ", roles) : "",
-                CreatedAt = u.CreatedAt
+                Id = user.Id,
+                FullName = user.FullName,
+                Email = user.Email,
+                IsActive = user.IsActive,
+                RoleName = string.Join(", ", roles),
+                Roles = roles.ToList(),
+                CreatedAt = user.CreatedAt
             });
-        }
 
-        return View(model);
+
+        }
+        return View(users);
     }
+
+      
+   
 
     [HttpGet]
     public async Task<IActionResult> Edit(string id)
@@ -134,15 +139,37 @@ public class UserManagementController : Controller
     }
 
     [HttpPost]
-    [ValidateAntiForgeryToken]
     public async Task<IActionResult> ToggleActive(string id)
     {
+        var currentUserId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+
+        if (currentUserId == id)
+        {
+            return Json(new
+            {
+                success = false,
+                message = "Kendi hesabınızı pasif yapamazsınız!"
+            });
+        }
+
+        // 👇 senin mevcut kodun
         var user = await _userManager.FindByIdAsync(id);
-        if (user == null) return NotFound();
+        if (user == null)
+            return Json(new { success = false });
 
         user.IsActive = !user.IsActive;
-        await _userManager.UpdateAsync(user);
 
-        return RedirectToAction(nameof(Index));
+        var result = await _userManager.UpdateAsync(user);
+
+        if (!result.Succeeded)
+            return Json(new { success = false });
+
+        return Json(new
+        {
+            success = true,
+            isActive = user.IsActive
+        });
     }
+
+
 }

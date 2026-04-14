@@ -1,3 +1,4 @@
+using MyDergiApp.Models.Enums;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 
@@ -5,6 +6,10 @@ namespace MyDergiApp.Entities
 {
     public class Submission
     {
+        public string? EditorId { get; set; }
+
+        [ForeignKey(nameof(EditorId))]
+        public AppUser? Editor { get; set; }
         public int Id { get; set; }
 
         [Required]
@@ -26,8 +31,7 @@ namespace MyDergiApp.Entities
 
         [Required]
         [StringLength(50)]
-        public string Status { get; set; } = "Submitted";
-
+        public SubmissionStatus Status { get; set; } = SubmissionStatus.Submitted;
         [StringLength(1000)]
         public string? EditorNote { get; set; }
 
@@ -36,5 +40,6 @@ namespace MyDergiApp.Entities
 
         [ForeignKey(nameof(AuthorId))]
         public AppUser Author { get; set; } = null!;
+        public string? FinalDecision { get; set; }
     }
 }

@@ -5,6 +5,7 @@ using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.EntityFrameworkCore;
 using MyDergiApp.Data;
 using MyDergiApp.Entities;
+using MyDergiApp.Models.Enums;
 using MyDergiApp.ViewModels.Submissions;
 using System.Security.Claims;
 
@@ -85,7 +86,7 @@ namespace MyDergiApp.Controllers
                 Keywords = model.Keywords,
                 AuthorId = GetCurrentUserId(),
                 CreatedAt = DateTime.UtcNow,
-                Status = "Submitted"
+                Status = SubmissionStatus.Submitted
             };
 
             _context.Submissions.Add(submission);
@@ -133,7 +134,7 @@ namespace MyDergiApp.Controllers
                 AuthorId = submission.AuthorId,
                 AuthorName = submission.Author?.FullName ?? "",
                 AuthorEmail = submission.Author?.Email ?? "",
-                CanEdit = isOwner && submission.Status == "Submitted",
+                CanEdit = isOwner && submission.Status == SubmissionStatus.Submitted,
                 CanManageStatus = isPrivileged,
                 Reviewers = reviewerAssignments.Select(x => new ReviewerAssignmentListItemViewModel
                 {
@@ -169,7 +170,7 @@ namespace MyDergiApp.Controllers
             if (!isPrivileged && !isOwner)
                 return Forbid();
 
-            if (!isPrivileged && submission.Status != "Submitted")
+            if (!isPrivileged && submission.Status != SubmissionStatus.Submitted)
             {
                 TempData["Error"] = "Bu makale artık düzenlenemez.";
                 return RedirectToAction(nameof(Detail), new { id });
@@ -185,7 +186,55 @@ namespace MyDergiApp.Controllers
 
             return View(vm);
         }
+        [Authorize(Roles = "Admin,Editor")]
+        [HttpGet]
+        public async Task<IActionResult> UpdateStatus(int id)
+        {
+            var submission = await _context.Submissions
+                .FirstOrDefaultAsync(s => s.Id == id);
 
+            if (submission == null)
+                return NotFound();
+
+            var vm = new SubmissionStatusUpdateViewModel
+            {
+                SubmissionId = submission.Id,
+                Status = submission.Status.ToString(),
+                EditorNote = submission.EditorNote
+            };
+
+            return View(vm);
+        }
+
+        [Authorize(Roles = "Admin,Editor")]
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> UpdateStatus(SubmissionStatusUpdateViewModel model)
+        {
+            if (!ModelState.IsValid)
+                return View(model);
+
+            if (!Enum.TryParse<SubmissionStatus>(model.Status, out var parsedStatus))
+            {
+                ModelState.AddModelError("Status", "Geçersiz durum seçildi.");
+                return View(model);
+            }
+
+            var submission = await _context.Submissions
+                .FirstOrDefaultAsync(s => s.Id == model.SubmissionId);
+
+            if (submission == null)
+                return NotFound();
+
+            submission.Status = parsedStatus;
+            submission.EditorNote = model.EditorNote;
+            submission.UpdatedAt = DateTime.UtcNow;
+
+            await _context.SaveChangesAsync();
+
+            TempData["Success"] = "Makale durumu güncellendi.";
+            return RedirectToAction(nameof(Detail), new { id = submission.Id });
+        }
         [Authorize(Roles = "Author,Admin,Editor")]
         [HttpPost]
         [ValidateAntiForgeryToken]
@@ -209,7 +258,7 @@ namespace MyDergiApp.Controllers
             if (!isPrivileged && !isOwner)
                 return Forbid();
 
-            if (!isPrivileged && submission.Status != "Submitted")
+            if (!isPrivileged && submission.Status != SubmissionStatus.Submitted)
             {
                 TempData["Error"] = "Bu makale artık düzenlenemez.";
                 return RedirectToAction(nameof(Detail), new { id = submission.Id });
@@ -300,76 +349,25 @@ namespace MyDergiApp.Controllers
             {
                 SubmissionId = model.SubmissionId,
                 ReviewerId = model.ReviewerId,
-                Status = "Assigned",
+                Status = ReviewStatus.Assigned,
                 AssignedAt = DateTime.UtcNow
             };
 
-            _context.SubmissionReviewers.Add(assignment);
-
-            if (submission.Status == "Submitted")
+            if (submission.Status == SubmissionStatus.Submitted)
             {
-                submission.Status = "InReview";
+                submission.Status = SubmissionStatus.InReview;
                 submission.UpdatedAt = DateTime.UtcNow;
             }
+
+            _context.SubmissionReviewers.Add(assignment);
+
+            if (submission.Status == SubmissionStatus.Submitted)
+                submission.Status = SubmissionStatus.InReview;
 
             await _context.SaveChangesAsync();
 
             TempData["Success"] = "Reviewer başarıyla atandı.";
             return RedirectToAction(nameof(Detail), new { id = model.SubmissionId });
-        }
-
-        [Authorize(Roles = "Reviewer")]
-        [HttpGet]
-        public async Task<IActionResult> MyReviews()
-        {
-            var userId = GetCurrentUserId();
-
-            var assignments = await _context.SubmissionReviewers
-                .Include(x => x.Submission)
-                    .ThenInclude(s => s.Author)
-                .Where(x => x.ReviewerId == userId)
-                .OrderByDescending(x => x.AssignedAt)
-                .ToListAsync();
-
-            var vm = assignments.Select(x => new ReviewerAssignmentListItemViewModel
-            {
-                AssignmentId = x.Id,
-                SubmissionId = x.SubmissionId,
-                SubmissionTitle = x.Submission.Title ?? "",
-                AuthorName = x.Submission.Author != null ? (x.Submission.Author.FullName ?? "") : "",
-                ReviewerName = "",
-                ReviewerEmail = "",
-                Status = x.Status.ToString(),
-                AssignedAt = x.AssignedAt,
-                CompletedAt = x.CompletedAt,
-                ReviewNote = x.ReviewNote ?? ""
-            }).ToList();
-
-            return View(vm);
-        }
-
-        [Authorize(Roles = "Reviewer")]
-        [HttpGet]
-        public async Task<IActionResult> SubmitReview(int id)
-        {
-            var userId = GetCurrentUserId();
-
-            var assignment = await _context.SubmissionReviewers
-                .Include(x => x.Submission)
-                .FirstOrDefaultAsync(x => x.Id == id && x.ReviewerId == userId);
-
-            if (assignment == null)
-                return NotFound();
-
-            var vm = new ReviewSubmitViewModel
-            {
-                AssignmentId = assignment.Id,
-                SubmissionId = assignment.SubmissionId,
-                SubmissionTitle = assignment.Submission.Title,
-                ReviewNote = assignment.ReviewNote ?? ""
-            };
-
-            return View(vm);
         }
 
         [Authorize(Roles = "Reviewer")]
@@ -390,63 +388,35 @@ namespace MyDergiApp.Controllers
                 return NotFound();
 
             assignment.ReviewNote = model.ReviewNote;
-            assignment.Status = "Completed";
+            assignment.Recommendation = model.Recommendation;
+            assignment.Status = ReviewStatus.Completed;
             assignment.CompletedAt = DateTime.UtcNow;
+
+            var submission = assignment.Submission;
+
+            var reviews = await _context.SubmissionReviewers
+                .Where(x => x.SubmissionId == submission.Id && x.Status == ReviewStatus.Completed)
+                .ToListAsync();
+
+            if (reviews.Count >= 2)
+            {
+                if (reviews.All(r => r.Recommendation == "Accept"))
+                {
+                    submission.FinalDecision = "Accept Suggestion";
+                }
+                else if (reviews.Any(r => r.Recommendation == "Reject"))
+                {
+                    submission.FinalDecision = "Reject Suggestion";
+                }
+            }
 
             await _context.SaveChangesAsync();
 
             TempData["Success"] = "Review başarıyla kaydedildi.";
-            return RedirectToAction(nameof(MyReviews));
+            return RedirectToAction("MyReviews");
         }
 
-        [Authorize(Roles = "Admin,Editor")]
-        [HttpGet]
-        public async Task<IActionResult> UpdateStatus(int id)
-        {
-            var submission = await _context.Submissions.FirstOrDefaultAsync(s => s.Id == id);
-
-            if (submission == null)
-                return NotFound();
-
-            var vm = new SubmissionStatusUpdateViewModel
-            {
-                SubmissionId = submission.Id,
-                Status = submission.Status,
-                EditorNote = submission.EditorNote
-            };
-
-            return View(vm);
-        }
-
-        [Authorize(Roles = "Admin,Editor")]
-        [HttpPost]
-        [ValidateAntiForgeryToken]
-        public async Task<IActionResult> UpdateStatus(SubmissionStatusUpdateViewModel model)
-        {
-            if (!ModelState.IsValid)
-                return View(model);
-
-            var allowedStatuses = new[] { "Submitted", "InReview", "RevisionRequested", "Accepted", "Rejected" };
-
-            if (!allowedStatuses.Contains(model.Status))
-            {
-                ModelState.AddModelError("Status", "Geçersiz durum seçildi.");
-                return View(model);
-            }
-
-            var submission = await _context.Submissions.FirstOrDefaultAsync(s => s.Id == model.SubmissionId);
-
-            if (submission == null)
-                return NotFound();
-
-            submission.Status = model.Status;
-            submission.EditorNote = model.EditorNote;
-            submission.UpdatedAt = DateTime.UtcNow;
-
-            await _context.SaveChangesAsync();
-
-            TempData["Success"] = "Makale durumu güncellendi.";
-            return RedirectToAction(nameof(Detail), new { id = submission.Id });
-        }
+      
+       
     }
 }

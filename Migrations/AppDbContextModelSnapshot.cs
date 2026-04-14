@@ -275,6 +275,9 @@ namespace MyDergiApp.Migrations
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("timestamp with time zone");
 
+                    b.Property<string>("EditorId")
+                        .HasColumnType("text");
+
                     b.Property<string>("EditorNote")
                         .HasMaxLength(1000)
                         .HasColumnType("character varying(1000)");
@@ -283,14 +286,16 @@ namespace MyDergiApp.Migrations
                         .HasMaxLength(500)
                         .HasColumnType("character varying(500)");
 
+                    b.Property<string>("FinalDecision")
+                        .HasColumnType("text");
+
                     b.Property<string>("Keywords")
                         .HasMaxLength(500)
                         .HasColumnType("character varying(500)");
 
-                    b.Property<string>("Status")
-                        .IsRequired()
+                    b.Property<int>("Status")
                         .HasMaxLength(50)
-                        .HasColumnType("character varying(50)");
+                        .HasColumnType("integer");
 
                     b.Property<string>("Title")
                         .IsRequired()
@@ -303,6 +308,8 @@ namespace MyDergiApp.Migrations
                     b.HasKey("Id");
 
                     b.HasIndex("AuthorId");
+
+                    b.HasIndex("EditorId");
 
                     b.ToTable("Submissions");
                 });
@@ -321,6 +328,10 @@ namespace MyDergiApp.Migrations
                     b.Property<DateTime?>("CompletedAt")
                         .HasColumnType("timestamp with time zone");
 
+                    b.Property<string>("Recommendation")
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)");
+
                     b.Property<string>("ReviewNote")
                         .HasMaxLength(2000)
                         .HasColumnType("character varying(2000)");
@@ -329,10 +340,9 @@ namespace MyDergiApp.Migrations
                         .IsRequired()
                         .HasColumnType("text");
 
-                    b.Property<string>("Status")
-                        .IsRequired()
+                    b.Property<int>("Status")
                         .HasMaxLength(50)
-                        .HasColumnType("character varying(50)");
+                        .HasColumnType("integer");
 
                     b.Property<int>("SubmissionId")
                         .HasColumnType("integer");
@@ -405,7 +415,14 @@ namespace MyDergiApp.Migrations
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
+                    b.HasOne("MyDergiApp.Entities.AppUser", "Editor")
+                        .WithMany()
+                        .HasForeignKey("EditorId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
                     b.Navigation("Author");
+
+                    b.Navigation("Editor");
                 });
 
             modelBuilder.Entity("MyDergiApp.Entities.SubmissionReviewer", b =>
