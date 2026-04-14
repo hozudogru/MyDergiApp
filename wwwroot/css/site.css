@@ -139,13 +139,12 @@ table.dataTable tbody tr:hover {
 }
 
 .table tbody tr {
-    transition: all 0.2s ease;
+    transition: background-color 0.15s ease, box-shadow 0.15s ease;
 }
 
-    .table tbody tr:hover {
-        background: #f8fafc;
-        transform: scale(1.003);
-    }
+.table tbody tr:hover {
+     background: #f8fafc;
+}
 .btn-primary {
     background: linear-gradient(135deg, #3b82f6, #2563eb);
     border: none;
