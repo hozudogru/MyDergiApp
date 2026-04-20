@@ -1,0 +1,346 @@
+﻿@model MyDergiApp.Models.Submission
+@using MyDergiApp.Models
+
+@{
+    ViewData["Title"] = "Makale Değerlendir";
+    Review? existingReview = ViewBag.ExistingReview as Review;
+    var decision = existingReview?.Decision ?? "";
+    var lastUpdate = existingReview?.UpdatedAt ?? existingReview?.CreatedAt;
+}
+
+<div class="review-page">
+    <div class="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-4">
+        <div>
+            <h2 class="fw-bold mb-1">Makale Değerlendirme Formu</h2>
+            <p class="text-muted mb-0">Makale için ayrıntılı akademik değerlendirmenizi giriniz.</p>
+        </div>
+
+        <a asp-controller="Reviewer" asp-action="Index" class="btn btn-outline-secondary rounded-pill px-4">
+            <i class="bi bi-arrow-left me-1"></i> Geri Dön
+        </a>
+    </div>
+
+    @if (TempData["Error"] != null)
+    {
+        <div class="alert alert-danger rounded-4 border-0 shadow-sm">@TempData["Error"]</div>
+    }
+
+    @if (TempData["Success"] != null)
+    {
+        <div class="alert alert-success rounded-4 border-0 shadow-sm">@TempData["Success"]</div>
+    }
+
+    <div class="row g-4">
+        <div class="col-lg-8">
+            <div class="card border-0 shadow-sm mb-4 section-card">
+                <div class="card-body p-4">
+                    <div class="section-title">Makale Bilgileri</div>
+
+                    <div class="meta-label">Başlık</div>
+                    <h3 class="fw-semibold mb-3">@Model.Title</h3>
+
+                    @if (!string.IsNullOrWhiteSpace(Model.Abstract))
+                    {
+                        <div class="meta-label">Özet</div>
+                        <div class="abstract-box mb-3">
+                            @Model.Abstract
+                        </div>
+                    }
+
+                    @if (!string.IsNullOrWhiteSpace(Model.Keywords))
+                    {
+                        <div class="meta-label">Anahtar Kelimeler</div>
+                        <div class="mb-3">
+                            @foreach (var keyword in Model.Keywords.Split(',', StringSplitOptions.RemoveEmptyEntries))
+                            {
+                                <span class="badge rounded-pill text-bg-light border me-2 mb-2 px-3 py-2">@keyword.Trim()</span>
+                            }
+                        </div>
+                    }
+
+                    @if (!string.IsNullOrWhiteSpace(Model.FilePath))
+                    {
+                        <a href="@Url.Content(Model.FilePath)" target="_blank" class="btn btn-outline-primary rounded-pill px-4">
+                            <i class="bi bi-file-earmark-pdf me-1"></i> Makaleyi Aç
+                        </a>
+                    }
+                </div>
+            </div>
+
+            <form asp-action="Review" method="post">
+                @Html.AntiForgeryToken()
+                <input type="hidden" name="submissionId" value="@Model.Id" />
+
+                <div class="card border-0 shadow-sm mb-4 section-card">
+                    <div class="card-body p-4">
+                        <div class="section-title">Ön Değerlendirme</div>
+
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <label class="form-label fw-semibold">Makale Yayın Kapsamına Uygun mu?</label>
+                                <select class="form-select rounded-4" name="scopeFit">
+                                    <option value="">Seçiniz</option>
+                                    <option>Evet</option>
+                                    <option>Kısmen</option>
+                                    <option>Hayır</option>
+                                </select>
+                            </div>
+
+                            <div class="col-md-6">
+                                <label class="form-label fw-semibold">Etik Sorun Şüphesi Var mı?</label>
+                                <select class="form-select rounded-4" name="hasEthicalIssue">
+                                    <option value="false" selected="@(existingReview?.HasEthicalIssue != true)">Hayır</option>
+                                    <option value="true" selected="@(existingReview?.HasEthicalIssue == true)">Evet</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="mt-3">
+                            <label class="form-label fw-semibold">Etik / İntihal / Çakışma Açıklaması</label>
+                            <textarea name="ethicalConcerns" class="form-control rounded-4" rows="4"
+                                      placeholder="Varsa etik sorun, çıkar çatışması veya özel notunuzu yazınız...">@(existingReview?.EthicalConcerns ?? "")</textarea>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card border-0 shadow-sm mb-4 section-card">
+                    <div class="card-body p-4">
+                        <div class="section-title">Puanlama</div>
+
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <label class="form-label fw-semibold">Özgünlük</label>
+                                <select name="originalityScore" class="form-select rounded-4">
+                                    <option value="">Puan seçiniz</option>
+                                    @for (int i = 1; i <= 5; i++)
+                                    {
+                                        <option value="@i" selected="@(existingReview?.OriginalityScore == i)">@i / 5</option>
+                                    }
+                                </select>
+                            </div>
+
+                            <div class="col-md-6">
+                                <label class="form-label fw-semibold">Yöntem</label>
+                                <select name="methodologyScore" class="form-select rounded-4">
+                                    <option value="">Puan seçiniz</option>
+                                    @for (int i = 1; i <= 5; i++)
+                                    {
+                                        <option value="@i" selected="@(existingReview?.MethodologyScore == i)">@i / 5</option>
+                                    }
+                                </select>
+                            </div>
+
+                            <div class="col-md-6">
+                                <label class="form-label fw-semibold">Literatür Kullanımı</label>
+                                <select name="literatureScore" class="form-select rounded-4">
+                                    <option value="">Puan seçiniz</option>
+                                    @for (int i = 1; i <= 5; i++)
+                                    {
+                                        <option value="@i" selected="@(existingReview?.LiteratureScore == i)">@i / 5</option>
+                                    }
+                                </select>
+                            </div>
+
+                            <div class="col-md-6">
+                                <label class="form-label fw-semibold">Yazım ve Dil Kalitesi</label>
+                                <select name="writingQualityScore" class="form-select rounded-4">
+                                    <option value="">Puan seçiniz</option>
+                                    @for (int i = 1; i <= 5; i++)
+                                    {
+                                        <option value="@i" selected="@(existingReview?.WritingQualityScore == i)">@i / 5</option>
+                                    }
+                                </select>
+                            </div>
+
+                            <div class="col-md-6">
+                                <label class="form-label fw-semibold">Genel Değerlendirme Puanı</label>
+                                <select name="overallScore" class="form-select rounded-4">
+                                    <option value="">Puan seçiniz</option>
+                                    @for (int i = 1; i <= 10; i++)
+                                    {
+                                        <option value="@i" selected="@(existingReview?.OverallScore == i)">@i / 10</option>
+                                    }
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card border-0 shadow-sm mb-4 section-card">
+                    <div class="card-body p-4">
+                        <div class="section-title">Nitel Değerlendirme</div>
+
+                        <div class="mb-4">
+                            <label class="form-label fw-semibold">Genel Hakem Yorumu</label>
+                            <textarea name="comments" class="form-control rounded-4 review-textarea" rows="6"
+                                      placeholder="Makalenin genel değerlendirmesini yazınız...">@(existingReview?.Comments ?? "")</textarea>
+                        </div>
+
+                        <div class="row g-3 mb-4">
+                            <div class="col-md-6">
+                                <label class="form-label fw-semibold">Güçlü Yönler</label>
+                                <textarea name="strengths" class="form-control rounded-4" rows="5"
+                                          placeholder="Makalenin güçlü taraflarını yazınız...">@(existingReview?.Strengths ?? "")</textarea>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label fw-semibold">Zayıf Yönler</label>
+                                <textarea name="weaknesses" class="form-control rounded-4" rows="5"
+                                          placeholder="Makalenin geliştirilmesi gereken yönlerini yazınız...">@(existingReview?.Weaknesses ?? "")</textarea>
+                            </div>
+                        </div>
+
+                        <div class="mb-4">
+                            <label class="form-label fw-semibold">Yazara Yorum</label>
+                            <textarea name="commentToAuthor" class="form-control rounded-4" rows="6"
+                                      placeholder="Yazara iletilecek yapıcı yorumlarınızı yazınız...">@(existingReview?.CommentToAuthor ?? "")</textarea>
+                        </div>
+
+                        <div class="mb-0">
+                            <label class="form-label fw-semibold">Editöre Gizli Not</label>
+                            <textarea name="commentToEditor" class="form-control rounded-4" rows="5"
+                                      placeholder="Sadece editörün göreceği notunuzu yazınız...">@(existingReview?.CommentToEditor ?? "")</textarea>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card border-0 shadow-sm mb-4 section-card">
+                    <div class="card-body p-4">
+                        <div class="section-title">Nihai Karar</div>
+
+                        <div class="mb-4">
+                            <label class="form-label fw-semibold">Karar</label>
+                            <select name="decision" class="form-select rounded-4">
+                                <option value="">Seçiniz</option>
+                                <option value="Accept" selected="@(decision == "Accept")">Kabul</option>
+                                <option value="Minor Revision" selected="@(decision == "Minor Revision")">Minör Revizyon</option>
+                                <option value="Major Revision" selected="@(decision == "Major Revision")">Majör Revizyon</option>
+                                <option value="Reject" selected="@(decision == "Reject")">Red</option>
+                            </select>
+                        </div>
+
+                        <div class="d-flex flex-wrap gap-2">
+                            <button type="submit" name="submitType" value="draft" class="btn btn-outline-primary rounded-pill px-4">
+                                <i class="bi bi-save me-1"></i> Taslak Kaydet
+                            </button>
+
+                            <button type="submit" name="submitType" value="submit" class="btn btn-primary rounded-pill px-4">
+                                <i class="bi bi-check2-circle me-1"></i> Nihai Gönder
+                            </button>
+
+                            <a asp-controller="Reviewer" asp-action="Index" class="btn btn-light border rounded-pill px-4">
+                                Vazgeç
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </form>
+        </div>
+
+        <div class="col-lg-4">
+            <div class="card border-0 shadow-sm sticky-top section-card" style="top: 20px;">
+                <div class="card-body p-4">
+                    <h5 class="fw-semibold mb-3">Süreç Bilgisi</h5>
+
+                    <div class="info-row">
+                        <div class="info-label">Makale No</div>
+                        <div class="info-value">#@Model.Id</div>
+                    </div>
+
+                    <div class="info-row">
+                        <div class="info-label">Gönderim Tarihi</div>
+                        <div class="info-value">@Model.CreatedAt.ToLocalTime().ToString("dd.MM.yyyy HH:mm")</div>
+                    </div>
+
+                    <div class="info-row">
+                        <div class="info-label">Mevcut Durum</div>
+                        <div class="info-value">
+                            @if (existingReview == null)
+                            {
+                                <span class="badge rounded-pill bg-warning-subtle text-warning-emphasis px-3 py-2">Bekliyor</span>
+                            }
+                            else if (existingReview.IsDraft)
+                            {
+                                <span class="badge rounded-pill bg-info-subtle text-info-emphasis px-3 py-2">Taslak</span>
+                            }
+                            else
+                            {
+                                <span class="badge rounded-pill bg-success-subtle text-success-emphasis px-3 py-2">Gönderildi</span>
+                            }
+                        </div>
+                    </div>
+
+                    @if (lastUpdate != null)
+                    {
+                        <div class="info-row">
+                            <div class="info-label">Son Güncelleme</div>
+                            <div class="info-value">@lastUpdate.Value.ToLocalTime().ToString("dd.MM.yyyy HH:mm")</div>
+                        </div>
+                    }
+
+                    <div class="info-row border-0 pb-0">
+                        <div class="info-label">Değerlendirme İpucu</div>
+                        <div class="small text-muted">
+                            Yazara yorum alanında kimlik açığa çıkaracak ifade kullanmayın.
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <style>
+        .section-card {
+            border-radius: 20px;
+        }
+
+        .section-title {
+            font-size: 1.1rem;
+            font-weight: 700;
+            color: #1f2937;
+            margin-bottom: 1.25rem;
+        }
+
+        .meta-label {
+            font-size: .85rem;
+            color: #6b7280;
+            margin-bottom: .35rem;
+        }
+
+        .abstract-box {
+            background: #f8fafc;
+            border: 1px solid #e9eef5;
+            border-radius: 18px;
+            padding: 1rem 1.1rem;
+            line-height: 1.75;
+            white-space: pre-line;
+        }
+
+        .review-textarea {
+            min-height: 180px;
+        }
+
+        .info-row {
+            padding: .9rem 0;
+            border-bottom: 1px solid #edf2f7;
+        }
+
+        .info-label {
+            font-size: .82rem;
+            color: #6b7280;
+            margin-bottom: .2rem;
+        }
+
+        .info-value {
+            font-weight: 600;
+            color: #111827;
+        }
+
+        .form-control,
+        .form-select {
+            border-radius: 16px !important;
+            padding: .8rem .95rem;
+        }
+    </style>
+}

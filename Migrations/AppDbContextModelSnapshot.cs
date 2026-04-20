@@ -256,7 +256,256 @@ namespace MyDergiApp.Migrations
                     b.ToTable("Journals");
                 });
 
-            modelBuilder.Entity("MyDergiApp.Entities.Submission", b =>
+            modelBuilder.Entity("MyDergiApp.Models.Announcement", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("Content")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("boolean");
+
+                    b.Property<bool>("ShowAsPopup")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("Title")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("Announcements");
+                });
+
+            modelBuilder.Entity("MyDergiApp.Models.HomePageSettings", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("AboutContent")
+                        .HasColumnType("text");
+
+                    b.Property<string>("AboutTitle")
+                        .HasMaxLength(250)
+                        .HasColumnType("character varying(250)");
+
+                    b.Property<string>("Address")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<string>("ContactEmail")
+                        .HasMaxLength(250)
+                        .HasColumnType("character varying(250)");
+
+                    b.Property<string>("ContactPhone")
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)");
+
+                    b.Property<string>("FooterText")
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)");
+
+                    b.Property<string>("HeroDescription")
+                        .HasColumnType("text");
+
+                    b.Property<string>("HeroTitle")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("JournalSubtitle")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<string>("JournalTitle")
+                        .HasMaxLength(250)
+                        .HasColumnType("character varying(250)");
+
+                    b.Property<string>("LogoPath")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<string>("OnlineIssn")
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)");
+
+                    b.Property<string>("PrintIssn")
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("HomePageSettings");
+                });
+
+            modelBuilder.Entity("MyDergiApp.Models.Issue", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("CoverImagePath")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<string>("Description")
+                        .HasColumnType("text");
+
+                    b.Property<bool>("IsCurrent")
+                        .HasColumnType("boolean");
+
+                    b.Property<bool>("IsPublished")
+                        .HasColumnType("boolean");
+
+                    b.Property<int>("Number")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime?>("PublishedDate")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Title")
+                        .HasMaxLength(250)
+                        .HasColumnType("character varying(250)");
+
+                    b.Property<int>("Volume")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("Year")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("Issues");
+                });
+
+            modelBuilder.Entity("MyDergiApp.Models.JournalIndex", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("LogoPath")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(150)
+                        .HasColumnType("character varying(150)");
+
+                    b.Property<int>("SortOrder")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("Url")
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("JournalIndexes");
+                });
+
+            modelBuilder.Entity("MyDergiApp.Models.Review", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("CommentToAuthor")
+                        .HasColumnType("text");
+
+                    b.Property<string>("CommentToEditor")
+                        .HasColumnType("text");
+
+                    b.Property<string>("Comments")
+                        .HasColumnType("text");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Decision")
+                        .HasColumnType("text");
+
+                    b.Property<string>("EthicalConcerns")
+                        .HasColumnType("text");
+
+                    b.Property<bool>("HasEthicalIssue")
+                        .HasColumnType("boolean");
+
+                    b.Property<bool>("IsDraft")
+                        .HasColumnType("boolean");
+
+                    b.Property<int?>("LiteratureScore")
+                        .HasColumnType("integer");
+
+                    b.Property<int?>("MethodologyScore")
+                        .HasColumnType("integer");
+
+                    b.Property<int?>("OriginalityScore")
+                        .HasColumnType("integer");
+
+                    b.Property<int?>("OverallScore")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("ReviewerId")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("ScopeFit")
+                        .HasColumnType("text");
+
+                    b.Property<string>("Strengths")
+                        .HasColumnType("text");
+
+                    b.Property<int>("SubmissionId")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime?>("SubmittedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Weaknesses")
+                        .HasColumnType("text");
+
+                    b.Property<int?>("WritingQualityScore")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ReviewerId");
+
+                    b.HasIndex("SubmissionId");
+
+                    b.ToTable("Reviews");
+                });
+
+            modelBuilder.Entity("MyDergiApp.Models.Submission", b =>
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
@@ -275,32 +524,34 @@ namespace MyDergiApp.Migrations
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("timestamp with time zone");
 
-                    b.Property<string>("EditorId")
+                    b.Property<string>("DecisionByUserId")
                         .HasColumnType("text");
 
-                    b.Property<string>("EditorNote")
-                        .HasMaxLength(1000)
-                        .HasColumnType("character varying(1000)");
+                    b.Property<DateTime?>("DecisionDate")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("DecisionNote")
+                        .IsRequired()
+                        .HasColumnType("text");
 
                     b.Property<string>("FilePath")
-                        .HasMaxLength(500)
-                        .HasColumnType("character varying(500)");
-
-                    b.Property<string>("FinalDecision")
+                        .IsRequired()
                         .HasColumnType("text");
 
                     b.Property<string>("Keywords")
-                        .HasMaxLength(500)
-                        .HasColumnType("character varying(500)");
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("NoteToEditor")
+                        .IsRequired()
+                        .HasColumnType("text");
 
                     b.Property<int>("Status")
-                        .HasMaxLength(50)
                         .HasColumnType("integer");
 
                     b.Property<string>("Title")
                         .IsRequired()
-                        .HasMaxLength(300)
-                        .HasColumnType("character varying(300)");
+                        .HasColumnType("text");
 
                     b.Property<DateTime?>("UpdatedAt")
                         .HasColumnType("timestamp with time zone");
@@ -309,12 +560,10 @@ namespace MyDergiApp.Migrations
 
                     b.HasIndex("AuthorId");
 
-                    b.HasIndex("EditorId");
-
                     b.ToTable("Submissions");
                 });
 
-            modelBuilder.Entity("MyDergiApp.Entities.SubmissionReviewer", b =>
+            modelBuilder.Entity("MyDergiApp.Models.SubmissionReviewer", b =>
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
@@ -329,19 +578,22 @@ namespace MyDergiApp.Migrations
                         .HasColumnType("timestamp with time zone");
 
                     b.Property<string>("Recommendation")
-                        .HasMaxLength(50)
-                        .HasColumnType("character varying(50)");
+                        .IsRequired()
+                        .HasColumnType("text");
 
                     b.Property<string>("ReviewNote")
-                        .HasMaxLength(2000)
-                        .HasColumnType("character varying(2000)");
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("ReviewText")
+                        .IsRequired()
+                        .HasColumnType("text");
 
                     b.Property<string>("ReviewerId")
                         .IsRequired()
                         .HasColumnType("text");
 
                     b.Property<int>("Status")
-                        .HasMaxLength(50)
                         .HasColumnType("integer");
 
                     b.Property<int>("SubmissionId")
@@ -351,7 +603,8 @@ namespace MyDergiApp.Migrations
 
                     b.HasIndex("ReviewerId");
 
-                    b.HasIndex("SubmissionId");
+                    b.HasIndex("SubmissionId", "ReviewerId")
+                        .IsUnique();
 
                     b.ToTable("SubmissionReviewers");
                 });
@@ -407,7 +660,26 @@ namespace MyDergiApp.Migrations
                         .IsRequired();
                 });
 
-            modelBuilder.Entity("MyDergiApp.Entities.Submission", b =>
+            modelBuilder.Entity("MyDergiApp.Models.Review", b =>
+                {
+                    b.HasOne("MyDergiApp.Entities.AppUser", "Reviewer")
+                        .WithMany()
+                        .HasForeignKey("ReviewerId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("MyDergiApp.Models.Submission", "Submission")
+                        .WithMany("Reviews")
+                        .HasForeignKey("SubmissionId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Reviewer");
+
+                    b.Navigation("Submission");
+                });
+
+            modelBuilder.Entity("MyDergiApp.Models.Submission", b =>
                 {
                     b.HasOne("MyDergiApp.Entities.AppUser", "Author")
                         .WithMany()
@@ -415,17 +687,10 @@ namespace MyDergiApp.Migrations
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
-                    b.HasOne("MyDergiApp.Entities.AppUser", "Editor")
-                        .WithMany()
-                        .HasForeignKey("EditorId")
-                        .OnDelete(DeleteBehavior.Restrict);
-
                     b.Navigation("Author");
-
-                    b.Navigation("Editor");
                 });
 
-            modelBuilder.Entity("MyDergiApp.Entities.SubmissionReviewer", b =>
+            modelBuilder.Entity("MyDergiApp.Models.SubmissionReviewer", b =>
                 {
                     b.HasOne("MyDergiApp.Entities.AppUser", "Reviewer")
                         .WithMany()
@@ -433,7 +698,7 @@ namespace MyDergiApp.Migrations
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
-                    b.HasOne("MyDergiApp.Entities.Submission", "Submission")
+                    b.HasOne("MyDergiApp.Models.Submission", "Submission")
                         .WithMany()
                         .HasForeignKey("SubmissionId")
                         .OnDelete(DeleteBehavior.Cascade)
@@ -442,6 +707,11 @@ namespace MyDergiApp.Migrations
                     b.Navigation("Reviewer");
 
                     b.Navigation("Submission");
+                });
+
+            modelBuilder.Entity("MyDergiApp.Models.Submission", b =>
+                {
+                    b.Navigation("Reviews");
                 });
 #pragma warning restore 612, 618
         }

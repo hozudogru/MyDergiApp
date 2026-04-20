@@ -1,0 +1,186 @@
+﻿@model MyDergiApp.ViewModels.Submissions.EditorDecisionViewModel
+@using MyDergiApp.Entities
+
+@{
+    ViewData["Title"] = "Editör Kararı";
+}
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h2 class="fw-bold mb-1">Editör Karar Paneli</h2>
+        <p class="text-muted mb-0">Hakem değerlendirmelerine göre nihai kararı verin.</p>
+    </div>
+    <a asp-action="Detail" asp-route-id="@Model.SubmissionId" class="btn btn-outline-secondary rounded-pill">
+        <i class="bi bi-arrow-left me-1"></i> Detaya Dön
+    </a>
+</div>
+
+<div class="row g-3 mb-4">
+    <div class="col-md-4">
+        <div class="card border-0 shadow-sm">
+            <div class="card-body">
+                <div class="text-muted small mb-2">Makale</div>
+                <div class="fw-semibold">@Model.Title</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-4">
+        <div class="card border-0 shadow-sm">
+            <div class="card-body">
+                <div class="text-muted small mb-2">Tamamlanan Hakem</div>
+                <div class="fs-4 fw-bold">@Model.CompletedReviewerCount / @Model.TotalReviewerCount</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-4">
+        <div class="card border-0 shadow-sm border-start border-4 border-primary">
+            <div class="card-body">
+                <div class="text-muted small mb-2">Sistem Önerisi</div>
+                <div class="fw-semibold text-primary">@Model.SuggestedDecision</div>
+            </div>
+        </div>
+    </div>
+</div>
+@if (Model.HasConflict)
+{
+    <div class="alert alert-danger border-0 shadow-sm mb-4">
+        <div class="fw-semibold mb-1">
+            <i class="bi bi-exclamation-triangle-fill me-2"></i>Hakem Kararlarında Çelişki
+        </div>
+        <div>@Model.ConflictMessage</div>
+    </div>
+}
+<div class="card border-0 shadow-sm mb-4">
+    <div class="card-header bg-white border-0 py-3">
+        <h5 class="mb-0 fw-semibold">Hakem Görüşleri</h5>
+    </div>
+    <div class="card-body">
+        @if (Model.Reviews == null || !Model.Reviews.Any())
+        {
+            <div class="text-muted">Henüz hakem değerlendirmesi bulunmuyor.</div>
+        }
+        else
+        {
+            <div class="row g-3">
+                @foreach (var review in Model.Reviews)
+                {
+                    <div class="col-md-6">
+                        <div class="border rounded-4 p-3 h-100 bg-light">
+                            <div class="d-flex justify-content-between align-items-start mb-2">
+                                <div>
+                                    <div class="fw-semibold">@review.ReviewerName</div>
+                                    <div class="small text-muted">@review.ReviewerEmail</div>
+                                </div>
+
+                                @if (review.IsCompleted)
+                                {
+                                    <span class="badge bg-success">Tamamlandı</span>
+                                }
+                                else
+                                {
+                                    <span class="badge bg-warning text-dark">Bekliyor</span>
+                                }
+                            </div>
+
+                            <div class="mb-2">
+                                <span class="text-muted small">Karar:</span>
+                                @if (string.IsNullOrWhiteSpace(review.Decision))
+                                {
+                                    <span class="ms-1 text-muted">-</span>
+                                }
+                                else if (review.Decision == "Accept")
+                                {
+                                    <span class="badge bg-success-subtle text-success-emphasis ms-1">Accept</span>
+                                }
+                                else if (review.Decision == "Minor Revision")
+                                {
+                                    <span class="badge bg-info-subtle text-info-emphasis ms-1">Minor Revision</span>
+                                }
+                                else if (review.Decision == "Major Revision")
+                                {
+                                    <span class="badge bg-warning-subtle text-warning-emphasis ms-1">Major Revision</span>
+                                }
+                                else if (review.Decision == "Reject")
+                                {
+                                    <span class="badge bg-danger-subtle text-danger-emphasis ms-1">Reject</span>
+                                }
+                                else
+                                {
+                                    <span class="badge bg-secondary-subtle text-secondary-emphasis ms-1">@review.Decision</span>
+                                }
+                            </div>
+
+                            @if (review.CompletedAt.HasValue)
+                            {
+                                <div class="small text-muted mb-2">
+                                    Son işlem: @review.CompletedAt.Value.ToLocalTime().ToString("dd.MM.yyyy HH:mm")
+                                </div>
+                            }
+
+                            <div class="fw-semibold mb-2">Hakem Yorumu</div>
+                            <div class="bg-white border rounded-3 p-3 small review-box">
+                                @(string.IsNullOrWhiteSpace(review.Comments) ? "Henüz yorum girilmemiş." : review.Comments)
+                            </div>
+                        </div>
+                    </div>
+                }
+            </div>
+        }
+    </div>
+</div>
+
+<div class="card border-0 shadow-sm">
+    <div class="card-header bg-white border-0 py-3">
+        <h5 class="mb-0 fw-semibold">Nihai Editör Kararı</h5>
+    </div>
+    <div class="card-body">
+        <form asp-action="EditorDecision" method="post">
+            @Html.AntiForgeryToken()
+            <input type="hidden" asp-for="SubmissionId" />
+            <input type="hidden" asp-for="Title" />
+            <input type="hidden" asp-for="SuggestedDecision" />
+            <input type="hidden" asp-for="TotalReviewerCount" />
+            <input type="hidden" asp-for="CompletedReviewerCount" />
+
+            <div asp-validation-summary="ModelOnly" class="text-danger mb-3"></div>
+
+            <div class="mb-4">
+                <label asp-for="Status" class="form-label fw-semibold">Editör Kararı</label>
+                <select asp-for="Status" class="form-select rounded-4">
+                    <option value="@SubmissionStatus.Submitted">Submitted</option>
+                    <option value="@SubmissionStatus.InReview">Under Review</option>
+                    <option value="@SubmissionStatus.RevisionRequired">Revision Required</option>
+                    <option value="@SubmissionStatus.Accepted">Accepted</option>
+                    <option value="@SubmissionStatus.Rejected">Rejected</option>
+                </select>
+                <span asp-validation-for="Status" class="text-danger"></span>
+            </div>
+
+            <div class="mb-4">
+                <label asp-for="DecisionNote" class="form-label fw-semibold">Karar Notu</label>
+                <textarea asp-for="DecisionNote" rows="8" class="form-control rounded-4" placeholder="Yazara veya sistem içine özel editör notu yazabilirsiniz..."></textarea>
+                <span asp-validation-for="DecisionNote" class="text-danger"></span>
+            </div>
+
+            <div class="d-flex gap-2">
+                <button type="submit" class="btn btn-primary rounded-pill px-4">
+                    <i class="bi bi-check2-circle me-1"></i> Kararı Kaydet
+                </button>
+
+                <a asp-action="Detail" asp-route-id="@Model.SubmissionId" class="btn btn-light border rounded-pill px-4">
+                    Vazgeç
+                </a>
+            </div>
+        </form>
+    </div>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+    <style>
+        .card { border-radius: 18px; }
+        .review-box { white-space: pre-line; line-height: 1.65; min-height: 110px; }
+    </style>
+}

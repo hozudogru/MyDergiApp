@@ -8,6 +8,20 @@
 <div class="d-flex justify-content-between align-items-center mb-4">
     <div>
         <h2 class="mb-1">Kullanıcılar</h2>
+        @if (User.IsInRole("Admin"))
+        {
+            <a href="/UserManagement/TestMail" class="btn btn-warning mb-3">
+                📧 Mail Test
+            </a>
+        }
+        @if (User.IsInRole("Admin"))
+        {
+            <div class="mb-3 d-flex justify-content-end">
+                <a asp-action="Create" class="btn btn-success">
+                    <i class="bi bi-person-plus"></i> Yeni Kullanıcı
+                </a>
+            </div>
+        }
         <p class="text-muted mb-0">Sistemde kayıtlı kullanıcıları yönetin.</p>
     </div>
 </div>
@@ -56,7 +70,9 @@
                         <th style="width: 260px;">İşlemler</th>
                     </tr>
                 </thead>
+               
                 <tbody>
+                   
                     @foreach (var item in Model)
                     {
                         <tr>
@@ -67,7 +83,6 @@
                                 <span class="badge status-badge @(item.IsActive ? "bg-success" : "bg-danger")">
                                     @(item.IsActive ? "Aktif" : "Pasif")
                                 </span>
-                                
                             </td>
 
                             <td>
@@ -87,11 +102,11 @@
                                         <span class="@roleClass">@role</span>
                                     }
                                 </div>
-                            </td>
+                               </td>
+                         
 
                             <td>@item.CreatedAt.ToLocalTime().ToString("dd.MM.yyyy HH:mm")</td>
 
-                            <!-- SADECE 1 TD -->
                             <td class="align-middle">
                                 <div class="action-buttons">
                                     <a asp-action="Edit"
@@ -124,6 +139,25 @@
                                             <i class="bi @(item.IsActive ? "bi-x-circle" : "bi-check-circle")"></i>
                                             @(item.IsActive ? "Pasif Yap" : "Aktif Yap")
                                         </button>
+                                    }
+                                   
+                                    @if (User.IsInRole("Admin") && !item.Roles.Contains("Admin"))
+                                    {
+                                        if (!item.HasSubmissions)
+                                        {
+                                            <form asp-action="Delete" method="post" class="d-inline"
+                                                  onsubmit="return confirm('Bu kullanıcı silinsin mi?');">
+                                                @Html.AntiForgeryToken()
+                                                <input type="hidden" name="id" value="@item.Id" />
+                                                <button type="submit" class="btn btn-sm btn-outline-danger">
+                                                    <i class="bi bi-trash"></i> Sil
+                                                </button>
+                                            </form>
+                                        }
+                                        else
+                                        {
+                                            <span class="badge bg-secondary">Makalesi var</span>
+                                        }
                                     }
                                 </div>
                             </td>

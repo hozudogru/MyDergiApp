@@ -1,8 +1,347 @@
+@model MyDergiApp.ViewModels.HomePageViewModel
 @{
-    ViewData["Title"] = "Ana Sayfa";
+    Layout = null;
+    ViewData["Title"] = "Home";
 }
 
-<div class="text-center">
-    <h1 class="display-4">MyDergiApp</h1>
-    <p>Akademik dergi yönetim sistemi başlangıç projesi.</p>
-</div>
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>@Model.JournalTitle</title>
+
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="~/css/frontpage.css" asp-append-version="true" />
+</head>
+<body>
+
+    <div class="journal-topbar">
+        <div class="container d-flex justify-content-between align-items-center">
+            <div>
+                @if (!string.IsNullOrWhiteSpace(Model.PrintIssn))
+                {
+                    <span>ISSN (Print): @Model.PrintIssn</span>
+                }
+                @if (!string.IsNullOrWhiteSpace(Model.OnlineIssn))
+                {
+                    <span class="ms-3">ISSN (Online): @Model.OnlineIssn</span>
+                }
+            </div>
+            <div>
+                @if (User.Identity != null && User.Identity.IsAuthenticated)
+                {
+                    @if (User.IsInRole("Admin") || User.IsInRole("Editor"))
+                    {
+                        <a href="/Admin">Panel</a>
+                    }
+                    else if (User.IsInRole("Reviewer"))
+                    {
+                        <a href="/Reviewer">Panel</a>
+                    }
+                    else if (User.IsInRole("Author"))
+                    {
+                        <a href="/Author">Panel</a>
+                    }
+                    else
+                    {
+                        <a href="/">Panel</a>
+                    }
+
+                    <span class="mx-2">|</span>
+
+                    <form asp-area="Identity"
+                          asp-page="/Account/Logout"
+                          asp-route-returnUrl="@Url.Action("Index", "Home", new { area = "" })"
+                          method="post"
+                          style="display:inline;">
+                        @Html.AntiForgeryToken()
+                        <button type="submit"
+                                style="border:none; background:none; padding:0; color:inherit; text-decoration:underline; cursor:pointer;">
+                            Çıkış
+                        </button>
+                    </form>
+                }
+                else
+                {
+                    <a href="/Identity/Account/Register">Kayıt</a>
+                    <span class="mx-2">|</span>
+                    <a href="/Identity/Account/Login">Giriş</a>
+                }
+            </div>
+        </div>
+    </div>
+
+    <header class="journal-header">
+        <div class="container d-flex justify-content-between align-items-center flex-wrap gap-3">
+            <div class="d-flex align-items-center gap-3">
+                <img src="@(string.IsNullOrWhiteSpace(Model.LogoPath) ? "/images/logo.png" : Model.LogoPath)"
+                     alt="Logo"
+                     class="journal-logo" />
+                <div>
+                    <h1 class="journal-title">@Model.JournalTitle</h1>
+                    <div class="journal-subtitle">@Model.JournalSubtitle</div>
+                </div>
+            </div>
+
+            <div class="header-issue-badge">
+                Academic Journal Platform
+            </div>
+        </div>
+    </header>
+
+    <nav class="journal-nav">
+        <div class="container">
+            <ul class="journal-nav-list">
+                <li><a href="#">About</a></li>
+                <li><a href="#">Editorial Board</a></li>
+                <li><a href="#">Current Issue</a></li>
+                <li><a href="#">Archives</a></li>
+                <li><a href="#">Announcements</a></li>
+                <li><a href="#">Contact</a></li>
+                <li><a asp-controller="Submission" asp-action="Create" class="submit-link">Submit Article</a></li>
+            </ul>
+        </div>
+    </nav>
+
+    <section class="hero-section">
+        <div class="container">
+            <div class="row g-4 align-items-stretch">
+
+                <div class="col-lg-8">
+                    @if (Model.CurrentIssue != null)
+                    {
+                        <div class="content-card mb-4">
+                            <div class="section-title">Current Issue</div>
+                            <div class="current-issue-box">
+                                <div class="issue-cover">
+                                    <img src="@(string.IsNullOrWhiteSpace(Model.CurrentIssue.CoverImagePath) ? "https://via.placeholder.com/180x250?text=Issue+Cover" : Model.CurrentIssue.CoverImagePath)"
+                                         alt="Current Issue Cover" />
+                                </div>
+                                <div class="issue-details">
+                                    <h4>@Model.CurrentIssue.Title</h4>
+                                    <p><strong>Volume:</strong> @Model.CurrentIssue.Volume</p>
+                                    <p><strong>Number:</strong> @Model.CurrentIssue.Number</p>
+                                    <p><strong>Year:</strong> @Model.CurrentIssue.Year</p>
+
+                                    @if (Model.CurrentIssue.PublishedDate.HasValue)
+                                    {
+                                        <p><strong>Published:</strong> @Model.CurrentIssue.PublishedDate.Value.ToString("dd.MM.yyyy")</p>
+                                    }
+
+                                    @if (!string.IsNullOrWhiteSpace(Model.CurrentIssue.Description))
+                                    {
+                                        <p>@Model.CurrentIssue.Description</p>
+                                    }
+
+                                    <div class="mt-3">
+                                        <a href="#" class="btn btn-primary btn-sm me-2">Full Issue</a>
+                                        <a href="#" class="btn btn-outline-primary btn-sm">Table of Contents</a>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    }
+
+                    <div class="hero-box mb-4">
+                        <span class="hero-label">Peer-Reviewed • Open Access • Academic Publishing</span>
+                        <h2>@Model.HeroTitle</h2>
+                        <p>@Model.HeroDescription</p>
+
+                        <div class="hero-actions">
+                            <a asp-controller="Submission" asp-action="Create" class="btn btn-primary btn-lg me-2">
+                                Submit Article
+                            </a>
+                            <a href="#" class="btn btn-outline-primary btn-lg">
+                                Browse Articles
+                            </a>
+                        </div>
+                    </div>
+
+                    <div class="content-card mb-4">
+                        <div class="section-title">@Model.AboutTitle</div>
+                        <p>@Model.AboutContent</p>
+                    </div>
+
+                    <div class="content-card">
+                        <div class="section-title">Latest Articles</div>
+
+                        @if (Model.LatestArticles.Any())
+                        {
+                            @foreach (var article in Model.LatestArticles)
+                            {
+                                <div class="article-item">
+                                    <h5>@article.Title</h5>
+                                    <div class="article-meta">@article.Authors</div>
+
+                                    @if (!string.IsNullOrWhiteSpace(article.Abstract))
+                                    {
+                                        <p>@(article.Abstract.Length > 220 ? article.Abstract.Substring(0, 220) + "..." : article.Abstract)</p>
+                                    }
+                                </div>
+                            }
+                        }
+                        else
+                        {
+                            <p>No published articles found.</p>
+                        }
+                    </div>
+                </div>
+
+                <div class="col-lg-4">
+                    <div class="stats-card mb-4">
+                        <div class="stats-grid">
+                            <div class="stat-item">
+                                <h3>@Model.TotalArticles</h3>
+                                <p>Articles</p>
+                            </div>
+                            <div class="stat-item">
+                                <h3>@Model.TotalIssues</h3>
+                                <p>Issues</p>
+                            </div>
+                            <div class="stat-item">
+                                <h3>@Model.TotalReviewers</h3>
+                                <p>Reviewers</p>
+                            </div>
+                            <div class="stat-item">
+                                <h3>@Model.TotalAuthors</h3>
+                                <p>Authors</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="sidebar-card mb-4">
+                        <div class="section-title">Announcements</div>
+
+                        @if (Model.Announcements.Any())
+                        {
+                            @foreach (var ann in Model.Announcements)
+                            {
+                                <div class="mb-3">
+                                    <strong>@ann.Title</strong>
+                                    <div style="font-size: 0.9rem; color:#6b7c8f;">
+                                        @ann.Content
+                                    </div>
+                                </div>
+                            }
+                        }
+                        else
+                        {
+                            <p>No announcements.</p>
+                        }
+                    </div>
+
+                    <div class="sidebar-card mb-4 text-center">
+                        <div class="section-title">Submission</div>
+                        <p>Submit your manuscript through the online journal management system.</p>
+                        <a asp-controller="Submission" asp-action="Create" class="btn btn-success w-100">
+                            Make a Submission
+                        </a>
+                    </div>
+
+                    <div class="sidebar-card mb-4">
+                        <div class="section-title">Indexes</div>
+                        @if (Model.Indexes.Any())
+                        {
+                            <div class="index-list">
+                                @foreach (var index in Model.Indexes)
+                                {
+                                    <a href="@index.Url" target="_blank" class="index-item">
+                                        @if (!string.IsNullOrWhiteSpace(index.LogoPath))
+                                        {
+                                            <img src="@index.LogoPath" alt="@index.Name" />
+                                        }
+                                        else
+                                        {
+                                            <span>@index.Name</span>
+                                        }
+                                    </a>
+                                }
+                            </div>
+                        }
+                        else
+                        {
+                            <p class="mb-0">No index information added yet.</p>
+                        }
+                    </div>
+
+                    <div class="sidebar-card">
+                        <div class="section-title">Quick Links</div>
+                        <ul class="footer-links">
+                            <li><a href="#">About</a></li>
+                            <li><a href="#">Archives</a></li>
+                            <li><a asp-controller="Submission" asp-action="Create">Submit Article</a></li>
+                        </ul>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </section>
+
+    <footer class="journal-footer">
+        <div class="container">
+            <div class="row g-4">
+                <div class="col-md-4">
+                    <h5>@Model.JournalTitle</h5>
+                    <p>@Model.FooterText</p>
+                </div>
+                <div class="col-md-4">
+                    <h5>Contact</h5>
+                    @if (!string.IsNullOrWhiteSpace(Model.ContactEmail))
+                    {
+                        <p>Email: @Model.ContactEmail</p>
+                    }
+                    @if (!string.IsNullOrWhiteSpace(Model.ContactPhone))
+                    {
+                        <p>Phone: @Model.ContactPhone</p>
+                    }
+                    @if (!string.IsNullOrWhiteSpace(Model.Address))
+                    {
+                        <p>Address: @Model.Address</p>
+                    }
+                </div>
+                <div class="col-md-4">
+                    <h5>Quick Links</h5>
+                    <ul class="footer-links">
+                        <li><a href="#">About</a></li>
+                        <li><a href="#">Archives</a></li>
+                        <li><a asp-controller="Submission" asp-action="Create">Submit Article</a></li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </footer>
+
+    @if (Model.Announcements.Any(x => x.ShowAsPopup))
+    {
+        var popup = Model.Announcements.First(x => x.ShowAsPopup);
+
+        <div id="announcementModal"
+             style="position:fixed; inset:0; width:100vw; height:100vh; background:rgba(0,0,0,.6); display:flex; align-items:center; justify-content:center; z-index:99999;">
+        
+            <div style="position:relative; background:#fff; padding:30px; border-radius:12px; max-width:500px; width:90%; text-align:center; box-shadow:0 20px 50px rgba(0,0,0,.2);">
+            
+                <button type="button"
+                        onclick="closePopup()"
+                        style="position:absolute; top:10px; right:15px; border:none; background:none; font-size:20px; cursor:pointer;">
+                    ✖
+                </button>
+
+                <h4>@popup.Title</h4>
+                <p>@popup.Content</p>
+            </div>
+        </div>
+
+        <script>
+                document.body.style.overflow = "hidden";
+
+                function closePopup() {
+                    const modal = document.getElementById("announcementModal");
+                    if (modal) modal.style.display = "none";
+                    document.body.style.overflow = "auto";
+                }
+        </script>
+    }
+</body>
+</html>

@@ -1,0 +1,351 @@
+﻿@model IEnumerable<MyDergiApp.Models.Submission>
+@using MyDergiApp.Models
+
+@{
+    ViewData["Title"] = "Hakem Panelim";
+
+    var userId = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+
+    var reviewedItems = Model
+        .Select(x => new
+        {
+            Submission = x,
+            Review = x.Reviews?.FirstOrDefault(r => r.ReviewerId == userId)
+        })
+        .ToList();
+
+    var totalCount = reviewedItems.Count;
+    var completedCount = reviewedItems.Count(x => x.Review != null && !x.Review.IsDraft);
+    var draftCount = reviewedItems.Count(x => x.Review != null && x.Review.IsDraft);
+    var pendingCount = reviewedItems.Count(x => x.Review == null);
+
+    var progressPercent = totalCount == 0
+        ? 0
+        : (int)Math.Round((double)completedCount * 100 / totalCount);
+}
+
+<div class="reviewer-dashboard">
+
+    <div class="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-4">
+        <div>
+            <h2 class="fw-bold mb-1">Hakem Panelim</h2>
+            <p class="text-muted mb-0">Atanmış makaleleri inceleyin ve değerlendirmelerinizi yönetin.</p>
+        </div>
+
+        <div class="text-muted small">
+            <i class="bi bi-person-check me-1"></i>
+            Aktif hakem ekranı
+        </div>
+    </div>
+
+    <div class="row g-3 mb-4">
+        <div class="col-12 col-md-6 col-xl-3">
+            <div class="card stat-card border-0 shadow-sm h-100">
+                <div class="card-body">
+                    <div class="stat-label">Toplam Atama</div>
+                    <div class="stat-value">@totalCount</div>
+                    <div class="stat-note">Size atanmış makale sayısı</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-12 col-md-6 col-xl-3">
+            <div class="card stat-card stat-success border-0 shadow-sm h-100">
+                <div class="card-body">
+                    <div class="stat-label">Tamamlanan</div>
+                    <div class="stat-value">@completedCount</div>
+                    <div class="stat-note">Nihai gönderilmiş değerlendirmeler</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-12 col-md-6 col-xl-3">
+            <div class="card stat-card stat-draft border-0 shadow-sm h-100">
+                <div class="card-body">
+                    <div class="stat-label">Taslak</div>
+                    <div class="stat-value">@draftCount</div>
+                    <div class="stat-note">Henüz nihai gönderilmemiş kayıtlar</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-12 col-md-6 col-xl-3">
+            <div class="card stat-card stat-warning border-0 shadow-sm h-100">
+                <div class="card-body">
+                    <div class="stat-label">Bekleyen</div>
+                    <div class="stat-value">@pendingCount</div>
+                    <div class="stat-note">Henüz hiç değerlendirilmemiş</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-12">
+            <div class="card stat-card stat-info border-0 shadow-sm h-100">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <div class="stat-label mb-0">Tamamlanma</div>
+                        <div class="fw-semibold">@progressPercent%</div>
+                    </div>
+                    <div class="progress progress-thin mb-2">
+                        <div class="progress-bar" role="progressbar" style="width:@progressPercent%"></div>
+                    </div>
+                    <div class="stat-note">Toplam ilerleme oranı</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="card border-0 shadow-sm table-card">
+        <div class="card-header bg-white border-0 py-3 px-4 d-flex justify-content-between align-items-center">
+            <div>
+                <h5 class="mb-1 fw-semibold">Atanmış Makaleler</h5>
+                <div class="text-muted small">İnceleme, düzenleme ve karar yönetimi</div>
+            </div>
+            <span class="badge rounded-pill text-bg-light border">@totalCount kayıt</span>
+        </div>
+
+        <div class="card-body p-0">
+            @if (!Model.Any())
+            {
+                <div class="empty-state text-center py-5 px-4">
+                    <div class="empty-icon mb-3">
+                        <i class="bi bi-journal-x"></i>
+                    </div>
+                    <h5 class="fw-semibold">Henüz makale atanmamış</h5>
+                    <p class="text-muted mb-0">Editör tarafından size atanan makaleler burada listelenecek.</p>
+                </div>
+            }
+            else
+            {
+                <div class="table-responsive">
+                    <table class="table align-middle mb-0 reviewer-table">
+                        <thead>
+                            <tr>
+                                <th class="ps-4">Makale</th>
+                                <th>Tarih</th>
+                                <th>Karar</th>
+                                <th>Durum</th>
+                                <th>Son İşlem</th>
+                                <th class="text-end pe-4">İşlem</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var row in reviewedItems)
+                            {
+                                var item = row.Submission;
+                                var myReview = row.Review;
+
+                                <tr>
+                                    <td class="ps-4">
+                                        <div class="fw-semibold text-dark">@item.Title</div>
+                                        <div class="small text-muted">Makale No: #@item.Id</div>
+                                    </td>
+
+                                    <td>
+                                        <div>@item.CreatedAt.ToLocalTime().ToString("dd.MM.yyyy")</div>
+                                        <div class="small text-muted">@item.CreatedAt.ToLocalTime().ToString("HH:mm")</div>
+                                    </td>
+
+                                    <td>
+                                        @if (myReview == null || string.IsNullOrWhiteSpace(myReview.Decision))
+                                        {
+                                            <span class="badge decision-badge bg-secondary-subtle text-secondary-emphasis">Karar Yok</span>
+                                        }
+                                        else if (myReview.Decision == "Accept")
+                                        {
+                                            <span class="badge decision-badge bg-success-subtle text-success-emphasis">Kabul</span>
+                                        }
+                                        else if (myReview.Decision == "Minor Revision")
+                                        {
+                                            <span class="badge decision-badge bg-info-subtle text-info-emphasis">Minör Revizyon</span>
+                                        }
+                                        else if (myReview.Decision == "Major Revision")
+                                        {
+                                            <span class="badge decision-badge bg-warning-subtle text-warning-emphasis">Majör Revizyon</span>
+                                        }
+                                        else if (myReview.Decision == "Reject")
+                                        {
+                                            <span class="badge decision-badge bg-danger-subtle text-danger-emphasis">Red</span>
+                                        }
+                                        else
+                                        {
+                                            <span class="badge decision-badge bg-secondary-subtle text-secondary-emphasis">@myReview.Decision</span>
+                                        }
+                                    </td>
+
+                                    <td>
+                                        @if (myReview == null)
+                                        {
+                                            <span class="badge status-badge bg-warning-subtle text-warning-emphasis">
+                                                <i class="bi bi-hourglass-split me-1"></i> Bekliyor
+                                            </span>
+                                        }
+                                        else if (myReview.IsDraft)
+                                        {
+                                            <span class="badge status-badge bg-info-subtle text-info-emphasis">
+                                                <i class="bi bi-pencil-square me-1"></i> Taslak
+                                            </span>
+                                        }
+                                        else
+                                        {
+                                            <span class="badge status-badge bg-success-subtle text-success-emphasis">
+                                                <i class="bi bi-check-circle me-1"></i> Gönderildi
+                                            </span>
+                                        }
+                                    </td>
+
+                                    <td>
+                                        @if (myReview != null)
+                                        {
+                                            var lastActionDate = myReview.UpdatedAt ?? myReview.SubmittedAt ?? myReview.CreatedAt;
+
+                                            <div>@lastActionDate.ToLocalTime().ToString("dd.MM.yyyy")</div>
+                                            <div class="small text-muted">@lastActionDate.ToLocalTime().ToString("HH:mm")</div>
+                                        }
+                                        else
+                                        {
+                                            <span class="text-muted small">Henüz işlem yok</span>
+                                        }
+                                    </td>
+
+                                    <td class="text-end pe-4">
+                                        <div class="d-inline-flex gap-2">
+                                            @if (myReview == null)
+                                            {
+                                                <a asp-controller="Reviewer" asp-action="Review" asp-route-id="@item.Id"
+                                                       class="btn btn-sm btn-primary action-btn">
+                                                    <i class="bi bi-search me-1"></i> İncele
+                                                </a>
+                                            }
+                                            else if (myReview.IsDraft)
+                                            {
+                                                <a asp-controller="Reviewer" asp-action="Review" asp-route-id="@item.Id"
+                                                       class="btn btn-sm btn-outline-info action-btn">
+                                                    <i class="bi bi-pencil-square me-1"></i> Taslağı Düzenle
+                                                </a>
+                                            }
+                                            else
+                                            {
+                                                <a asp-controller="Reviewer" asp-action="Review" asp-route-id="@item.Id"
+                                                       class="btn btn-sm btn-outline-warning action-btn">
+                                                    <i class="bi bi-eye me-1"></i> Görüntüle / Düzenle
+                                                </a>
+                                            }
+                                        </div>
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            }
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <style>
+        .reviewer-dashboard .card,
+        .reviewer-dashboard .table-card {
+            border-radius: 20px;
+        }
+
+        .stat-card {
+            overflow: hidden;
+        }
+
+        .stat-success {
+            background: linear-gradient(135deg, #f3fff7 0%, #eafff0 100%);
+        }
+
+        .stat-warning {
+            background: linear-gradient(135deg, #fffdf3 0%, #fff6d8 100%);
+        }
+
+        .stat-draft {
+            background: linear-gradient(135deg, #f2f8ff 0%, #e8f1ff 100%);
+        }
+
+        .stat-info {
+            background: linear-gradient(135deg, #f4f8ff 0%, #eaf1ff 100%);
+        }
+
+        .stat-label {
+            font-size: .92rem;
+            color: #6c757d;
+            margin-bottom: .5rem;
+        }
+
+        .stat-value {
+            font-size: 2.25rem;
+            font-weight: 700;
+            line-height: 1;
+            margin-bottom: .5rem;
+            color: #1f2937;
+        }
+
+        .stat-note {
+            font-size: .85rem;
+            color: #6c757d;
+        }
+
+        .progress-thin {
+            height: 10px;
+            border-radius: 999px;
+        }
+
+        .table-card .card-header {
+            border-top-left-radius: 20px;
+            border-top-right-radius: 20px;
+        }
+
+        .reviewer-table thead th {
+            background: #f8fafc;
+            font-weight: 700;
+            color: #111827;
+            border-bottom: 1px solid #e9ecef;
+            padding-top: 1rem;
+            padding-bottom: 1rem;
+            white-space: nowrap;
+        }
+
+        .reviewer-table tbody td {
+            padding-top: 1rem;
+            padding-bottom: 1rem;
+            vertical-align: middle;
+        }
+
+        .reviewer-table tbody tr {
+            transition: all .18s ease;
+        }
+
+            .reviewer-table tbody tr:hover {
+                background-color: #f8fbff;
+            }
+
+        .status-badge,
+        .decision-badge {
+            border-radius: 999px;
+            padding: .55rem .85rem;
+            font-weight: 600;
+        }
+
+        .action-btn {
+            border-radius: 999px;
+            padding-left: 1rem;
+            padding-right: 1rem;
+        }
+
+        .empty-state {
+            min-height: 280px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+        }
+
+        .empty-icon {
+            font-size: 3rem;
+            color: #adb5bd;
+        }
+    </style>
+}

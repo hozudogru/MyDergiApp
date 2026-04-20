@@ -1,32 +1,43 @@
 ﻿@model MyDergiApp.ViewModels.Submissions.AssignReviewerViewModel
 
 @{
-    ViewData["Title"] = "Reviewer Ata";
+    ViewData["Title"] = "Hakem Ata";
 }
 
-<h2>Reviewer Ata</h2>
-
 <div class="card">
+    <div class="card-header">
+        <h4 class="mb-0">Hakem Ata</h4>
+    </div>
     <div class="card-body">
-        <h5 class="card-title">@Model.SubmissionTitle</h5>
+        <p><strong>Makale:</strong> @Model.SubmissionTitle</p>
 
         <form asp-action="AssignReviewer" method="post">
+            @Html.AntiForgeryToken()
             <input type="hidden" asp-for="SubmissionId" />
+            <input type="hidden" asp-for="SubmissionTitle" />
 
             <div class="mb-3">
-                <label asp-for="ReviewerId" class="form-label"></label>
-                <select asp-for="ReviewerId" asp-items="Model.Reviewers" class="form-select">
+                <label asp-for="ReviewerId" class="form-label">Hakem</label>
+                <select asp-for="ReviewerId" asp-items="Model.AvailableReviewers" class="form-select">
                     <option value="">Seçiniz</option>
                 </select>
                 <span asp-validation-for="ReviewerId" class="text-danger"></span>
             </div>
 
             <button type="submit" class="btn btn-primary">Ata</button>
-            <a asp-action="Detail" asp-route-id="@Model.SubmissionId" class="btn btn-secondary">Geri</a>
+            <a asp-action="Detail" asp-route-id="@Model.SubmissionId" class="btn btn-secondary">Geri Dön</a>
         </form>
     </div>
 </div>
 
 @section Scripts {
-    <partial name="_ValidationScriptsPartial" />
+    <script>
+        document.querySelector("form")?.addEventListener("submit", function () {
+            const btn = document.getElementById("assignBtn");
+            if (btn) {
+                btn.disabled = true;
+                btn.innerText = "Atanıyor...";
+            }
+        });
+    </script>
 }

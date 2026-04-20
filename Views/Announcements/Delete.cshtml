@@ -1,0 +1,24 @@
+﻿@model MyDergiApp.Models.Announcement
+@{
+    ViewData["Title"] = "Duyuru Sil";
+}
+
+<h2 class="mb-3">Duyuru Sil</h2>
+
+<div class="alert alert-warning">
+    Bu duyuruyu silmek istediğine emin misin?
+</div>
+
+<div class="card shadow-sm">
+    <div class="card-body">
+        <h5>@Model.Title</h5>
+        <p>@Model.Content</p>
+
+        <form asp-action="Delete" method="post">
+            @Html.AntiForgeryToken()
+            <input asp-for="Id" type="hidden" />
+            <button type="submit" class="btn btn-danger">Sil</button>
+            <a asp-action="Index" class="btn btn-secondary">Vazgeç</a>
+        </form>
+    </div>
+</div>

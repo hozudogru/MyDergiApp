@@ -1,37 +1,207 @@
-﻿@model IEnumerable<MyDergiApp.ViewModels.Submissions.ReviewerAssignmentListItemViewModel>
+﻿@model IEnumerable<MyDergiApp.Models.Submission>
 
 @{
-    ViewData["Title"] = "Değerlendirmelerim";
+    ViewData["Title"] = "Hakem Panelim";
+
+    var userId = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+    var totalCount = Model.Count();
+    var reviewedItems = Model
+        .Select(x => new
+        {
+            Submission = x,
+            Review = x.Reviews?.FirstOrDefault(r => r.ReviewerId == userId)
+        })
+        .ToList();
+
+    var reviewedCount = reviewedItems.Count(x => x.Review != null);
+    var pendingCount = totalCount - reviewedCount;
+    var progressPercent = totalCount == 0 ? 0 : (int)Math.Round((double)reviewedCount * 100 / totalCount);
 }
 
-<h2>Değerlendirmelerim</h2>
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h2 class="fw-bold mb-1">Hakem Panelim</h2>
+        <p class="text-muted mb-0">Atanmış makaleleri inceleyin ve değerlendirmelerinizi yönetin.</p>
+    </div>
+</div>
 
-<table class="table table-bordered table-striped">
-    <thead>
-        <tr>
-            <th>Makale</th>
-            <th>Yazar</th>
-            <th>Durum</th>
-            <th>Atanma</th>
-            <th>Tamamlanma</th>
-            <th>İşlem</th>
-        </tr>
-    </thead>
-    <tbody>
-        @foreach (var item in Model)
+<div class="row g-3 mb-4">
+    <div class="col-md-3">
+        <div class="card border-0 shadow-sm h-100 dashboard-card">
+            <div class="card-body">
+                <div class="text-muted small mb-2">Toplam Atama</div>
+                <div class="fs-2 fw-bold">@totalCount</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-3">
+        <div class="card border-0 shadow-sm h-100 dashboard-card reviewed-card">
+            <div class="card-body">
+                <div class="text-muted small mb-2">Tamamlanan</div>
+                <div class="fs-2 fw-bold">@reviewedCount</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-3">
+        <div class="card border-0 shadow-sm h-100 dashboard-card pending-card">
+            <div class="card-body">
+                <div class="text-muted small mb-2">Bekleyen</div>
+                <div class="fs-2 fw-bold">@pendingCount</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-3">
+        <div class="card border-0 shadow-sm h-100 dashboard-card progress-card">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                    <div class="text-muted small">Tamamlanma</div>
+                    <div class="fw-semibold">@progressPercent%</div>
+                </div>
+                <div class="progress progress-thin">
+                    <div class="progress-bar" role="progressbar" style="width:@progressPercent%"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="card border-0 shadow-sm">
+    <div class="card-header bg-white border-0 py-3 d-flex justify-content-between align-items-center">
+        <h5 class="mb-0 fw-semibold">Atanmış Makaleler</h5>
+        <span class="text-muted small">@totalCount kayıt</span>
+    </div>
+
+    <div class="card-body p-0">
+        @if (!Model.Any())
         {
-            <tr>
-                <td>@item.SubmissionTitle</td>
-                <td>@item.AuthorName</td>
-                <td>@item.Status</td>
-                <td>@item.AssignedAt.ToLocalTime().ToString("dd.MM.yyyy HH:mm")</td>
-                <td>@(item.CompletedAt.HasValue? item.CompletedAt.Value.ToLocalTime().ToString("dd.MM.yyyy HH:mm") : "-")</td>
-                <td>
-                    <a asp-action="SubmitReview" asp-route-id="@item.AssignmentId" class="btn btn-sm btn-primary">
-                        Review Gir
-                    </a>
-                </td>
-            </tr>
+            <div class="text-center py-5">
+                <i class="bi bi-journal-x fs-1 text-muted"></i>
+                <h5 class="mt-3 fw-semibold">Henüz makale atanmamış</h5>
+                <p class="text-muted mb-0">Editör tarafından atanan makaleler burada listelenecek.</p>
+            </div>
         }
-    </tbody>
-</table>
+        else
+        {
+            <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0 reviewer-table">
+                    <thead class="table-light">
+                        <tr>
+                            <th class="ps-4">Makale</th>
+                            <th>Tarih</th>
+                            <th>Karar</th>
+                            <th>Durum</th>
+                            <th>Son İşlem</th>
+                            <th class="text-end pe-4">İşlem</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                    @foreach (var row in reviewedItems)
+                    {
+                        var item = row.Submission;
+                        var myReview = row.Review;
+                        var isReviewed = myReview != null;
+
+                        <tr>
+                            <td class="ps-4">
+                                <div class="fw-semibold">@item.Title</div>
+                                <div class="small text-muted">Makale No: #@item.Id</div>
+                            </td>
+
+                            <td>
+                                <div>@item.CreatedAt.ToLocalTime().ToString("dd.MM.yyyy")</div>
+                                <div class="small text-muted">@item.CreatedAt.ToLocalTime().ToString("HH:mm")</div>
+                            </td>
+
+                            <td>
+                                @if (myReview == null || string.IsNullOrWhiteSpace(myReview.Decision))
+                                {
+                                    <span class="text-muted small">-</span>
+                                }
+                                else if (myReview.Decision == "Accept")
+                                {
+                                    <span class="badge rounded-pill bg-success-subtle text-success-emphasis px-3 py-2">Accept</span>
+                                }
+                                else if (myReview.Decision == "Minor Revision")
+                                {
+                                    <span class="badge rounded-pill bg-info-subtle text-info-emphasis px-3 py-2">Minor Revision</span>
+                                }
+                                else if (myReview.Decision == "Major Revision")
+                                {
+                                    <span class="badge rounded-pill bg-warning-subtle text-warning-emphasis px-3 py-2">Major Revision</span>
+                                }
+                                else if (myReview.Decision == "Reject")
+                                {
+                                    <span class="badge rounded-pill bg-danger-subtle text-danger-emphasis px-3 py-2">Reject</span>
+                                }
+                                else
+                                {
+                                    <span class="badge rounded-pill bg-secondary-subtle text-secondary-emphasis px-3 py-2">@myReview.Decision</span>
+                                }
+                            </td>
+
+                            <td>
+                                @if (isReviewed)
+                                {
+                                    <span class="badge rounded-pill bg-success-subtle text-success-emphasis px-3 py-2">
+                                        <i class="bi bi-check-circle me-1"></i> Reviewed
+                                    </span>
+                                }
+                                else
+                                {
+                                    <span class="badge rounded-pill bg-warning-subtle text-warning-emphasis px-3 py-2">
+                                        <i class="bi bi-hourglass-split me-1"></i> Pending
+                                    </span>
+                                }
+                            </td>
+
+                            <td>
+                                @if (myReview != null)
+                                {
+                                    <div>@myReview.CreatedAt.ToLocalTime().ToString("dd.MM.yyyy")</div>
+                                    <div class="small text-muted">@myReview.CreatedAt.ToLocalTime().ToString("HH:mm")</div>
+                                }
+                                else
+                                {
+                                    <span class="text-muted small">Henüz yok</span>
+                                }
+                            </td>
+
+                            <td class="text-end pe-4">
+                                @if (isReviewed)
+                                {
+                                    <a asp-controller="Reviewer" asp-action="Review" asp-route-id="@item.Id"
+                                       class="btn btn-sm btn-outline-warning rounded-pill px-3">
+                                        <i class="bi bi-pencil-square me-1"></i> Düzenle
+                                    </a>
+                                }
+                                else
+                                {
+                                    <a asp-controller="Reviewer" asp-action="Review" asp-route-id="@item.Id"
+                                       class="btn btn-sm btn-primary rounded-pill px-3">
+                                        <i class="bi bi-search me-1"></i> İncele
+                                    </a>
+                                }
+                            </td>
+                        </tr>
+                    }
+                    </tbody>
+                </table>
+            </div>
+        }
+    </div>
+</div>
+
+@section Scripts {
+    <style>
+        .dashboard-card, .card { border-radius: 18px; }
+        .reviewed-card { background: linear-gradient(135deg, #f3fff7 0%, #eafff0 100%); }
+        .pending-card { background: linear-gradient(135deg, #fffdf3 0%, #fff6d8 100%); }
+        .progress-card { background: linear-gradient(135deg, #f4f8ff 0%, #eaf1ff 100%); }
+        .progress-thin { height: 10px; border-radius: 999px; }
+        .reviewer-table tbody tr:hover { background-color: #f8fbff; }
+        .reviewer-table td, .reviewer-table th { padding-top: 1rem; padding-bottom: 1rem; vertical-align: middle; }
+    </style>
+}

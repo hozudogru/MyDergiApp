@@ -1,35 +1,45 @@
 ﻿@model MyDergiApp.ViewModels.Submissions.SubmissionStatusUpdateViewModel
 
 @{
-    ViewData["Title"] = "Makale Durumu Güncelle";
+    ViewData["Title"] = "Durum Güncelle";
 }
 
-<h2>Makale Durumu Güncelle</h2>
-
-<form asp-action="UpdateStatus" method="post">
-    <input type="hidden" asp-for="SubmissionId" />
-
-    <div class="mb-3">
-        <label asp-for="Status" class="form-label"></label>
-        <select asp-for="Status" class="form-select">
-            <option value="Submitted">Submitted</option>
-            <option value="InReview">InReview</option>
-            <option value="RevisionRequested">RevisionRequested</option>
-            <option value="Accepted">Accepted</option>
-            <option value="Rejected">Rejected</option>
-        </select>
-        <span asp-validation-for="Status" class="text-danger"></span>
+<div class="card">
+    <div class="card-header">
+        <h4 class="mb-0">Makale Durumu Güncelle</h4>
     </div>
+    <div class="card-body">
 
-    <div class="mb-3">
-        <label asp-for="EditorNote" class="form-label"></label>
-        <textarea asp-for="EditorNote" class="form-control" rows="5"></textarea>
-        <span asp-validation-for="EditorNote" class="text-danger"></span>
+        <form asp-action="UpdateStatus" method="post">
+            @Html.AntiForgeryToken()
+
+            <input type="hidden" asp-for="SubmissionId" />
+
+            <div class="mb-3">
+                <label asp-for="Status" class="form-label"></label>
+                <select asp-for="Status"
+                        class="form-select"
+                        asp-items="Html.GetEnumSelectList<MyDergiApp.Models.SubmissionStatus>()">
+                </select>
+                <span asp-validation-for="Status" class="text-danger"></span>
+            </div>
+
+            <div class="mb-3">
+                <label asp-for="NoteToEditor" class="form-label">Editör Notu</label>
+                <textarea asp-for="NoteToEditor" class="form-control" rows="4"></textarea>
+            </div>
+
+            <div class="mb-3">
+                <label asp-for="DecisionNote" class="form-label">Karar Notu</label>
+                <textarea asp-for="DecisionNote" class="form-control" rows="4"></textarea>
+            </div>
+
+            <button type="submit" class="btn btn-primary">Kaydet</button>
+            <a asp-action="AdminList" class="btn btn-secondary">İptal</a>
+
+        </form>
     </div>
-
-    <button type="submit" class="btn btn-primary">Kaydet</button>
-    <a asp-action="Detail" asp-route-id="@Model.SubmissionId" class="btn btn-secondary">İptal</a>
-</form>
+</div>
 
 @section Scripts {
     <partial name="_ValidationScriptsPartial" />

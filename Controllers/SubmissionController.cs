@@ -5,9 +5,11 @@ using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.EntityFrameworkCore;
 using MyDergiApp.Data;
 using MyDergiApp.Entities;
-using MyDergiApp.Models.Enums;
+using MyDergiApp.Models;
+using MyDergiApp.Services;
 using MyDergiApp.ViewModels.Submissions;
 using System.Security.Claims;
+
 
 namespace MyDergiApp.Controllers
 {
@@ -16,11 +18,37 @@ namespace MyDergiApp.Controllers
     {
         private readonly AppDbContext _context;
         private readonly UserManager<AppUser> _userManager;
+        private readonly EmailService _emailService;
+        private readonly EmailTemplateService _templateService;
 
-        public SubmissionController(AppDbContext context, UserManager<AppUser> userManager)
+        public SubmissionController(
+            AppDbContext context,
+            UserManager<AppUser> userManager,
+            EmailService emailService,
+            EmailTemplateService templateService)
         {
             _context = context;
             _userManager = userManager;
+            _emailService = emailService;
+            _templateService = templateService;
+        }
+        [Authorize(Roles = "Reviewer")]
+
+        public async Task<IActionResult> MyReviews()
+        {
+            var user = await _userManager.GetUserAsync(User);
+
+            if (user == null)
+                return Challenge();
+
+            var submissions = await _context.SubmissionReviewers
+                 .Where(sr => sr.ReviewerId == user.Id)
+                 .Include(sr => sr.Submission)
+                     .ThenInclude(s => s!.Reviews)
+                 .Select(sr => sr.Submission!)
+                 .ToListAsync();
+
+            return View(submissions);
         }
 
         private string GetCurrentUserId()
@@ -64,14 +92,14 @@ namespace MyDergiApp.Controllers
             return View(submissions);
         }
 
-        [Authorize(Roles = "Author")]
+        [Authorize(Roles = "Author,Admin,Editor")]
         [HttpGet]
         public IActionResult Create()
         {
             return View(new SubmissionCreateEditViewModel());
         }
 
-        [Authorize(Roles = "Author")]
+        [Authorize(Roles = "Author,Admin,Editor")]
         [HttpPost]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> Create(SubmissionCreateEditViewModel model)
@@ -81,9 +109,9 @@ namespace MyDergiApp.Controllers
 
             var submission = new Submission
             {
-                Title = model.Title,
-                Abstract = model.Abstract,
-                Keywords = model.Keywords,
+                Title = model.Title ?? string.Empty,
+                Abstract = model.Abstract ?? string.Empty,
+                Keywords = model.Keywords ?? string.Empty,
                 AuthorId = GetCurrentUserId(),
                 CreatedAt = DateTime.UtcNow,
                 Status = SubmissionStatus.Submitted
@@ -95,13 +123,14 @@ namespace MyDergiApp.Controllers
             TempData["Success"] = "Makale başarıyla oluşturuldu.";
             return RedirectToAction(nameof(Index));
         }
-
         [Authorize(Roles = "Author,Admin,Editor")]
         [HttpGet]
         public async Task<IActionResult> Detail(int id)
         {
             var submission = await _context.Submissions
                 .Include(s => s.Author)
+                .Include(s => s.Reviews)
+                    .ThenInclude(r => r.Reviewer)
                 .FirstOrDefaultAsync(s => s.Id == id);
 
             if (submission == null)
@@ -130,10 +159,10 @@ namespace MyDergiApp.Controllers
                 CreatedAt = submission.CreatedAt,
                 UpdatedAt = submission.UpdatedAt,
                 Status = submission.Status,
-                EditorNote = submission.EditorNote,
+                NoteToEditor = submission.NoteToEditor,
                 AuthorId = submission.AuthorId,
                 AuthorName = submission.Author?.FullName ?? "",
-                AuthorEmail = submission.Author?.Email ?? "",
+                AuthorEmail = submission.Author != null ? submission.Author.Email : null,
                 CanEdit = isOwner && submission.Status == SubmissionStatus.Submitted,
                 CanManageStatus = isPrivileged,
                 Reviewers = reviewerAssignments.Select(x => new ReviewerAssignmentListItemViewModel
@@ -199,8 +228,9 @@ namespace MyDergiApp.Controllers
             var vm = new SubmissionStatusUpdateViewModel
             {
                 SubmissionId = submission.Id,
-                Status = submission.Status.ToString(),
-                EditorNote = submission.EditorNote
+                Status = submission.Status,
+                NoteToEditor = submission.NoteToEditor,
+                DecisionNote = submission.DecisionNote
             };
 
             return View(vm);
@@ -214,20 +244,14 @@ namespace MyDergiApp.Controllers
             if (!ModelState.IsValid)
                 return View(model);
 
-            if (!Enum.TryParse<SubmissionStatus>(model.Status, out var parsedStatus))
-            {
-                ModelState.AddModelError("Status", "Geçersiz durum seçildi.");
-                return View(model);
-            }
-
-            var submission = await _context.Submissions
-                .FirstOrDefaultAsync(s => s.Id == model.SubmissionId);
+            var submission = await _context.Submissions.FindAsync(model.SubmissionId);
 
             if (submission == null)
                 return NotFound();
 
-            submission.Status = parsedStatus;
-            submission.EditorNote = model.EditorNote;
+            submission.Status = model.Status;
+            submission.NoteToEditor = model.NoteToEditor ?? string.Empty;
+            submission.DecisionNote = model.DecisionNote ?? string.Empty;
             submission.UpdatedAt = DateTime.UtcNow;
 
             await _context.SaveChangesAsync();
@@ -264,9 +288,9 @@ namespace MyDergiApp.Controllers
                 return RedirectToAction(nameof(Detail), new { id = submission.Id });
             }
 
-            submission.Title = model.Title;
-            submission.Abstract = model.Abstract;
-            submission.Keywords = model.Keywords;
+            submission.Title = model.Title ?? string.Empty;
+            submission.Abstract = model.Abstract ?? string.Empty;
+            submission.Keywords = model.Keywords ?? string.Empty;
             submission.UpdatedAt = DateTime.UtcNow;
 
             await _context.SaveChangesAsync();
@@ -285,25 +309,273 @@ namespace MyDergiApp.Controllers
             if (submission == null)
                 return NotFound();
 
-            var reviewerUsers = await _userManager.GetUsersInRoleAsync("Reviewer");
+            var assignedReviewerIds = await _context.SubmissionReviewers
+                .Where(x => x.SubmissionId == id)
+                .Select(x => x.ReviewerId)
+                .ToListAsync();
+
+            var reviewers = await _userManager.GetUsersInRoleAsync("Reviewer");
+
+            var availableReviewers = reviewers
+                .Where(r => !assignedReviewerIds.Contains(r.Id))
+                .Select(r => new SelectListItem
+                {
+                    Value = r.Id,
+                    Text = $"{r.FullName} ({r.Email})"
+                })
+                .ToList();
 
             var vm = new AssignReviewerViewModel
             {
                 SubmissionId = submission.Id,
                 SubmissionTitle = submission.Title,
-                Reviewers = reviewerUsers
-                    .Where(x => x.IsActive)
-                    .Select(x => new SelectListItem
+                AvailableReviewers = availableReviewers
+            };
+
+            return View(vm);
+        }
+        [Authorize(Roles = "Admin,Editor")]
+        [HttpGet]
+        public async Task<IActionResult> EditorDecision(int id)
+        {
+            var submission = await _context.Submissions
+                .Include(s => s.Author)
+                .Include(s => s.Reviews)
+                    .ThenInclude(r => r.Reviewer)
+                .FirstOrDefaultAsync(s => s.Id == id);
+
+            if (submission == null)
+                return NotFound();
+
+            var assignments = await _context.SubmissionReviewers
+                .Include(x => x.Reviewer)
+                .Where(x => x.SubmissionId == id)
+                .ToListAsync();
+
+            var completedCount = assignments.Count(x => x.CompletedAt.HasValue);
+            var totalCount = assignments.Count;
+
+            if (totalCount < 2 || completedCount < 2)
+            {
+                TempData["Error"] = "Nihai karar için en az 2 hakem değerlendirmesi tamamlanmış olmalıdır.";
+                return RedirectToAction(nameof(Detail), new { id });
+            }
+
+            var reviewList = submission.Reviews.ToList();
+            var hasConflict = HasReviewerConflict(reviewList);
+            var suggestedDecision = GetSuggestedDecision(reviewList);
+
+            var vm = new EditorDecisionViewModel
+            {
+                SubmissionId = submission.Id,
+                Title = submission.Title ?? string.Empty,
+                Status = submission.Status,
+                DecisionNote = submission.DecisionNote ?? string.Empty,
+                SuggestedDecision = suggestedDecision,
+                TotalReviewerCount = totalCount,
+                CompletedReviewerCount = completedCount,
+                HasConflict = hasConflict,
+                ConflictMessage = hasConflict
+                    ? "Hakem kararları arasında çelişki var. Nihai karar dikkatle verilmelidir."
+                    : "",
+                Reviews = assignments.Select(a =>
+                {
+                    var review = submission.Reviews.FirstOrDefault(r => r.ReviewerId == a.ReviewerId);
+
+                    return new ReviewerDecisionItemViewModel
                     {
-                        Value = x.Id,
-                        Text = $"{x.FullName} ({x.Email})"
-                    })
-                    .ToList()
+                        ReviewerName = a.Reviewer?.FullName ?? "",
+                        ReviewerEmail = a.Reviewer?.Email ?? "",
+                        Decision = review?.Decision ?? "",
+                        Comments = review?.Comments ?? a.ReviewNote ?? "",
+                        CompletedAt = a.CompletedAt,
+                        IsCompleted = a.CompletedAt.HasValue
+                    };
+                }).ToList()
             };
 
             return View(vm);
         }
 
+        [Authorize(Roles = "Admin,Editor")]
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> EditorDecision(EditorDecisionViewModel model)
+        {
+            if (!ModelState.IsValid)
+            {
+                var submissionReload = await _context.Submissions
+                    .Include(s => s.Reviews)
+                        .ThenInclude(r => r.Reviewer)
+                    .FirstOrDefaultAsync(s => s.Id == model.SubmissionId);
+
+                var assignmentsReload = await _context.SubmissionReviewers
+                    .Include(x => x.Reviewer)
+                    .Where(x => x.SubmissionId == model.SubmissionId)
+                    .ToListAsync();
+
+                var reviewList = submissionReload?.Reviews.ToList() ?? new List<Review>();
+                var hasConflict = HasReviewerConflict(reviewList);
+
+                model.TotalReviewerCount = assignmentsReload.Count;
+                model.CompletedReviewerCount = assignmentsReload.Count(x => x.CompletedAt.HasValue);
+                model.SuggestedDecision = GetSuggestedDecision(reviewList);
+                model.HasConflict = hasConflict;
+                model.ConflictMessage = hasConflict
+                    ? "Hakem kararları arasında çelişki var. Nihai karar dikkatle verilmelidir."
+                    : "";
+
+                model.Reviews = assignmentsReload.Select(a =>
+                {
+                    var review = submissionReload?.Reviews.FirstOrDefault(r => r.ReviewerId == a.ReviewerId);
+
+                    return new ReviewerDecisionItemViewModel
+                    {
+                        ReviewerName = a.Reviewer?.FullName ?? "",
+                        ReviewerEmail = a.Reviewer?.Email ?? "",
+                        Decision = review?.Decision ?? "",
+                        Comments = review?.Comments ?? a.ReviewNote ?? "",
+                        CompletedAt = a.CompletedAt,
+                        IsCompleted = a.CompletedAt.HasValue
+                    };
+                }).ToList();
+
+                return View(model);
+            }
+
+            var assignments = await _context.SubmissionReviewers
+                .Where(x => x.SubmissionId == model.SubmissionId)
+                .ToListAsync();
+
+            var completedCount = assignments.Count(x => x.CompletedAt.HasValue);
+            var totalCount = assignments.Count;
+
+            if (totalCount < 2 || completedCount < 2)
+            {
+                TempData["Error"] = "En az 2 hakem değerlendirmesi tamamlanmadan nihai karar verilemez.";
+                return RedirectToAction(nameof(Detail), new { id = model.SubmissionId });
+            }
+
+            var submission = await _context.Submissions
+                .Include(s => s.Author)
+                .FirstOrDefaultAsync(s => s.Id == model.SubmissionId);
+
+            if (submission == null)
+                return NotFound();
+
+            submission.Status = model.Status;
+            submission.DecisionNote = model.DecisionNote ?? string.Empty;
+            submission.DecisionDate = DateTime.UtcNow;
+            submission.DecisionByUserId = _userManager.GetUserId(User);
+            submission.UpdatedAt = DateTime.UtcNow;
+
+            await _context.SaveChangesAsync();
+
+            if (!string.IsNullOrWhiteSpace(submission.Author?.Email))
+            {
+                var body = await _templateService.BuildEditorDecisionAsync(
+                    submission.Author?.FullName ?? "Yazar",
+                    submission.Title ?? "",
+                    model.Status.ToString(),
+                    model.DecisionNote ?? ""
+                );
+
+                var authorEmail = submission?.Author?.Email;
+
+                if (string.IsNullOrWhiteSpace(authorEmail))
+                {
+                    TempData["Error"] = "Yazar e-posta adresi bulunamadı.";
+                    return RedirectToAction("Detail", new { id = model.SubmissionId });
+                }
+
+                await _emailService.SendEmailAsync(
+                    authorEmail,
+                    "Makale Kararı",
+                    body
+                );
+
+                if (string.IsNullOrWhiteSpace(authorEmail))
+                {
+                    TempData["Error"] = "Yazar e-posta adresi bulunamadı.";
+                    return RedirectToAction("Detail", new { id = model.SubmissionId });
+                }
+
+                await _emailService.SendEmailAsync(
+                    authorEmail,
+                    "Makale Kararı",
+                    body
+                );
+            }
+
+            TempData["Success"] = "Editör kararı başarıyla kaydedildi.";
+            return RedirectToAction(nameof(Detail), new { id = model.SubmissionId });
+        }
+        [Authorize(Roles = "Admin,Editor")]
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> Delete(int id)
+        {
+            var submission = await _context.Submissions
+                .Include(s => s.Reviews)
+                .FirstOrDefaultAsync(s => s.Id == id);
+
+            if (submission == null)
+                return NotFound();
+
+            var assignments = await _context.SubmissionReviewers
+                .Where(x => x.SubmissionId == id)
+                .ToListAsync();
+
+            if (assignments.Any())
+            {
+                _context.SubmissionReviewers.RemoveRange(assignments);
+            }
+
+            if (submission.Reviews != null && submission.Reviews.Any())
+            {
+                _context.Reviews.RemoveRange(submission.Reviews);
+            }
+
+            _context.Submissions.Remove(submission);
+            await _context.SaveChangesAsync();
+
+            TempData["Success"] = "Makale başarıyla silindi.";
+            return RedirectToAction(nameof(AdminList));
+        }
+        [Authorize(Roles = "Admin,Editor")]
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> RemoveReviewer(int assignmentId, int submissionId)
+        {
+            var assignment = await _context.SubmissionReviewers
+                .FirstOrDefaultAsync(x => x.Id == assignmentId && x.SubmissionId == submissionId);
+
+            if (assignment == null)
+            {
+                TempData["Error"] = "Hakem ataması bulunamadı.";
+                return RedirectToAction(nameof(Detail), new { id = submissionId });
+            }
+
+            if (assignment.CompletedAt.HasValue)
+            {
+                TempData["Error"] = "Değerlendirmesini tamamlayan hakem kaldırılamaz.";
+                return RedirectToAction(nameof(Detail), new { id = submissionId });
+            }
+
+            var review = await _context.Reviews
+                .FirstOrDefaultAsync(r => r.SubmissionId == submissionId && r.ReviewerId == assignment.ReviewerId);
+
+            if (review != null)
+            {
+                _context.Reviews.Remove(review);
+            }
+
+            _context.SubmissionReviewers.Remove(assignment);
+            await _context.SaveChangesAsync();
+
+            TempData["Success"] = "Hakem ataması kaldırıldı.";
+            return RedirectToAction(nameof(Detail), new { id = submissionId });
+        }
         [Authorize(Roles = "Admin,Editor")]
         [HttpPost]
         [ValidateAntiForgeryToken]
@@ -315,24 +587,25 @@ namespace MyDergiApp.Controllers
             if (submission == null)
                 return NotFound();
 
-            var reviewerUsers = await _userManager.GetUsersInRoleAsync("Reviewer");
+            var assignedReviewerIds = await _context.SubmissionReviewers
+                .Where(x => x.SubmissionId == model.SubmissionId)
+                .Select(x => x.ReviewerId)
+                .ToListAsync();
 
-            model.Reviewers = reviewerUsers
-                .Where(x => x.IsActive)
-                .Select(x => new SelectListItem
+            var reviewers = await _userManager.GetUsersInRoleAsync("Reviewer");
+
+            model.AvailableReviewers = reviewers
+                .Where(r => !assignedReviewerIds.Contains(r.Id))
+                .Select(r => new SelectListItem
                 {
-                    Value = x.Id,
-                    Text = $"{x.FullName} ({x.Email})"
+                    Value = r.Id,
+                    Text = $"{r.FullName} ({r.Email})"
                 })
                 .ToList();
 
             if (!ModelState.IsValid)
-                return View(model);
-
-            var reviewerExists = reviewerUsers.Any(x => x.Id == model.ReviewerId);
-            if (!reviewerExists)
             {
-                ModelState.AddModelError("ReviewerId", "Geçersiz reviewer seçildi.");
+                model.SubmissionTitle = submission.Title;
                 return View(model);
             }
 
@@ -341,82 +614,116 @@ namespace MyDergiApp.Controllers
 
             if (alreadyAssigned)
             {
-                ModelState.AddModelError("ReviewerId", "Bu reviewer zaten atanmış.");
-                return View(model);
+                TempData["Error"] = "Bu hakem zaten atanmış.";
+                return RedirectToAction(nameof(Detail), new { id = model.SubmissionId });
             }
 
             var assignment = new SubmissionReviewer
             {
                 SubmissionId = model.SubmissionId,
                 ReviewerId = model.ReviewerId,
-                Status = ReviewStatus.Assigned,
                 AssignedAt = DateTime.UtcNow
             };
 
-            if (submission.Status == SubmissionStatus.Submitted)
-            {
-                submission.Status = SubmissionStatus.InReview;
-                submission.UpdatedAt = DateTime.UtcNow;
-            }
-
             _context.SubmissionReviewers.Add(assignment);
-
-            if (submission.Status == SubmissionStatus.Submitted)
-                submission.Status = SubmissionStatus.InReview;
-
             await _context.SaveChangesAsync();
 
-            TempData["Success"] = "Reviewer başarıyla atandı.";
+            string? emailWarning = null;
+
+            var reviewer = await _userManager.FindByIdAsync(model.ReviewerId);
+            if (reviewer != null && !string.IsNullOrWhiteSpace(reviewer.Email))
+            {
+                try
+                {
+                    var body = await _templateService.BuildReviewerAssignmentAsync(
+                        reviewer.FullName ?? "Hakem",
+                        submission.Title ?? ""
+                    );
+
+                    await _emailService.SendEmailAsync(
+                        reviewer.Email,
+                        "Yeni Hakem Ataması",
+                        body
+                    );
+                }
+                catch
+                {
+                    emailWarning = "Hakem atandı fakat e-posta gönderilemedi.";
+                }
+            }
+
+            TempData["Success"] = "Hakem başarıyla atandı.";
+
+            if (!string.IsNullOrWhiteSpace(emailWarning))
+            {
+                TempData["Error"] = emailWarning;
+            }
+
             return RedirectToAction(nameof(Detail), new { id = model.SubmissionId });
         }
-
-        [Authorize(Roles = "Reviewer")]
-        [HttpPost]
-        [ValidateAntiForgeryToken]
-        public async Task<IActionResult> SubmitReview(ReviewSubmitViewModel model)
+        private string GetSuggestedDecision(List<Review> reviews)
         {
-            if (!ModelState.IsValid)
-                return View(model);
+            if (reviews == null || !reviews.Any())
+                return "Henüz öneri yok";
 
-            var userId = GetCurrentUserId();
+            var decisions = reviews
+                .Where(r => !string.IsNullOrWhiteSpace(r.Decision))
+                .Select(r => r.Decision!.Trim())
+                .ToList();
 
-            var assignment = await _context.SubmissionReviewers
-                .Include(x => x.Submission)
-                .FirstOrDefaultAsync(x => x.Id == model.AssignmentId && x.ReviewerId == userId);
+            if (!decisions.Any())
+                return "Henüz öneri yok";
 
-            if (assignment == null)
-                return NotFound();
+            if (decisions.All(x => x == "Accept"))
+                return "Kabul öneriliyor";
 
-            assignment.ReviewNote = model.ReviewNote;
-            assignment.Recommendation = model.Recommendation;
-            assignment.Status = ReviewStatus.Completed;
-            assignment.CompletedAt = DateTime.UtcNow;
+            if (decisions.Any(x => x == "Reject") && decisions.Count(x => x == "Reject") >= 2)
+                return "Red öneriliyor";
 
-            var submission = assignment.Submission;
+            if (decisions.Any(x => x == "Major Revision"))
+                return "Majör revizyon öneriliyor";
 
-            var reviews = await _context.SubmissionReviewers
-                .Where(x => x.SubmissionId == submission.Id && x.Status == ReviewStatus.Completed)
-                .ToListAsync();
+            if (decisions.Any(x => x == "Minor Revision"))
+                return "Minör revizyon öneriliyor";
 
-            if (reviews.Count >= 2)
-            {
-                if (reviews.All(r => r.Recommendation == "Accept"))
-                {
-                    submission.FinalDecision = "Accept Suggestion";
-                }
-                else if (reviews.Any(r => r.Recommendation == "Reject"))
-                {
-                    submission.FinalDecision = "Reject Suggestion";
-                }
-            }
+            if (decisions.Count(x => x == "Reject") > decisions.Count(x => x == "Accept"))
+                return "Red eğilimi var";
 
-            await _context.SaveChangesAsync();
+            if (decisions.Count(x => x == "Accept") > decisions.Count(x => x == "Reject"))
+                return "Kabul eğilimi var";
 
-            TempData["Success"] = "Review başarıyla kaydedildi.";
-            return RedirectToAction("MyReviews");
+            return "Editör değerlendirmesi gerekli";
         }
+        private bool HasReviewerConflict(List<Review> reviews)
+        {
+            if (reviews == null || reviews.Count < 2)
+                return false;
 
-      
-       
+            var decisions = reviews
+                .Select(r => r.Decision)
+                .Where(d => !string.IsNullOrWhiteSpace(d))
+                .Select(d => d!.Trim())
+                .Distinct()
+                .ToList();
+
+            if (decisions.Count <= 1)
+                return false;
+
+            var hasAccept = decisions.Contains("Accept");
+            var hasReject = decisions.Contains("Reject");
+            var hasMajor = decisions.Contains("Major Revision");
+            var hasMinor = decisions.Contains("Minor Revision");
+
+            if (hasAccept && hasReject)
+                return true;
+
+            if (hasAccept && hasMajor)
+                return true;
+
+            if (hasReject && (hasMinor || hasMajor))
+                return true;
+
+            return false;
+        }
     }
 }

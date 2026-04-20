@@ -1,0 +1,164 @@
+﻿html, body {
+    height: 100%;
+    margin: 0;
+}
+
+body {
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    background: #eef2f7;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    color: #243447;
+}
+
+.container {
+    max-width: 1320px !important;
+}
+
+/* HEADER */
+.journal-topbar {
+    background: #0f2f57;
+    color: #fff;
+    font-size: 0.9rem;
+    padding: 10px 0;
+}
+
+.journal-header {
+    background: #fff;
+    padding: 34px 0 24px;
+    border-bottom: 1px solid #dde5ee;
+}
+
+.journal-title {
+    font-size: 2.6rem;
+    font-weight: 800;
+    color: #123c73;
+}
+
+.journal-subtitle {
+    color: #66788a;
+}
+
+/* NAV */
+.journal-nav {
+    background: #fff;
+    border-bottom: 1px solid #dde5ee;
+}
+
+.journal-nav-list {
+    list-style: none;
+    display: flex;
+    gap: 28px;
+    padding: 16px 0;
+}
+
+/* LAYOUT FIX */
+.hero-section,
+.main-content-section {
+    flex: 1 0 auto;
+}
+
+/* CARDS */
+.hero-box,
+.content-card,
+.sidebar-card {
+    background: #fff;
+    border-radius: 18px;
+    padding: 30px;
+    border: 1px solid #e8edf4;
+}
+
+    /* HERO */
+    .hero-box h2 {
+        font-size: 2.4rem;
+        font-weight: 800;
+        color: #123c73;
+        margin-bottom: 16px;
+    }
+
+    .hero-box p {
+        color: #5d6d7e;
+        margin-bottom: 20px;
+    }
+
+/* GRID */
+.stats-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 18px;
+}
+
+.stat-item {
+    background: #f8fbff;
+    border-radius: 12px;
+    padding: 20px;
+    text-align: center;
+}
+
+/* CONTENT */
+.main-content-section {
+    padding: 20px 0 60px;
+}
+
+/* CURRENT ISSUE */
+.current-issue-box {
+    display: flex;
+    gap: 20px;
+    flex-wrap: wrap;
+}
+
+.issue-cover img {
+    width: 180px;
+    height: 250px;
+    object-fit: cover;
+    border-radius: 12px;
+}
+
+.issue-details h4 {
+    color: #123c73;
+}
+
+/* ANNOUNCEMENT POPUP */
+.announcement-box {
+    position: relative;
+    background: #fff;
+    padding: 36px;
+    border-radius: 16px;
+    max-width: 560px;
+    margin: auto;
+    text-align: center;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.2);
+}
+
+.close-btn {
+    position: absolute;
+    top: 10px;
+    right: 15px;
+    border: none;
+    background: none;
+    font-size: 22px;
+    cursor: pointer;
+}
+
+/* ✅ FOOTER FIX */
+.journal-footer {
+    margin-top: auto;
+    background: #102b4c;
+    color: #fff;
+    padding: 50px 0;
+    width: 100%;
+}
+
+    .journal-footer h5 {
+        color: #fff;
+    }
+
+    .journal-footer p,
+    .journal-footer a {
+        color: rgba(255,255,255,0.85);
+    }
+
+        .journal-footer a:hover {
+            color: #fff;
+        }

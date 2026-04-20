@@ -1,0 +1,96 @@
+﻿@model MyDergiApp.Models.Submission
+@using MyDergiApp.Models
+
+@{
+    ViewData["Title"] = "Makale Değerlendir";
+    var existingReview = ViewBag.ExistingReview as Review;
+}
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h2 class="fw-bold mb-1">Makale Değerlendir</h2>
+        <p class="text-muted mb-0">Atanmış makale için görüş ve kararınızı kaydedin.</p>
+    </div>
+    <a asp-controller="Submission" asp-action="MyReviews" class="btn btn-outline-secondary rounded-pill">
+        <i class="bi bi-arrow-left me-1"></i> Geri Dön
+    </a>
+</div>
+
+<div class="card border-0 shadow-sm mb-4">
+    <div class="card-body p-4">
+        <div class="mb-3">
+            <div class="text-muted small mb-1">Makale Başlığı</div>
+            <h4 class="fw-semibold mb-0">@Model.Title</h4>
+        </div>
+
+        @if (!string.IsNullOrWhiteSpace(Model.Abstract))
+        {
+            <hr />
+            <div>
+                <div class="text-muted small mb-2">Özet</div>
+                <div class="bg-light rounded-4 p-3 review-abstract">
+                    @Model.Abstract
+                </div>
+            </div>
+        }
+    </div>
+</div>
+
+<div class="card border-0 shadow-sm">
+    <div class="card-body p-4">
+        <form asp-action="Review" method="post">
+            @Html.AntiForgeryToken()
+            <input type="hidden" name="submissionId" value="@Model.Id" />
+
+            <div class="mb-4">
+                <label class="form-label fw-semibold">Hakem Yorumu</label>
+                <textarea name="comments" class="form-control review-textarea" rows="10" placeholder="Makale hakkındaki değerlendirmenizi yazınız...">@(existingReview?.Comments ?? "")</textarea>
+            </div>
+
+            <div class="mb-4">
+                <label class="form-label fw-semibold">Karar</label>
+                <select name="decision" class="form-select review-select">
+                    <option value="">Seçiniz</option>
+                    <option value="Accept" selected="@(existingReview?.Decision == "Accept")">Accept</option>
+                    <option value="Minor Revision" selected="@(existingReview?.Decision == "Minor Revision")">Minor Revision</option>
+                    <option value="Major Revision" selected="@(existingReview?.Decision == "Major Revision")">Major Revision</option>
+                    <option value="Reject" selected="@(existingReview?.Decision == "Reject")">Reject</option>
+                </select>
+            </div>
+
+            <div class="d-flex gap-2">
+                <button type="submit" class="btn btn-primary rounded-pill px-4">
+                    <i class="bi bi-save me-1"></i> Kaydet
+                </button>
+
+                <a asp-controller="Submission" asp-action="MyReviews" class="btn btn-light border rounded-pill px-4">
+                    Vazgeç
+                </a>
+            </div>
+        </form>
+    </div>
+</div>
+
+@section Scripts {
+    <style>
+        .review-textarea {
+            border-radius: 16px;
+            padding: 14px;
+            resize: vertical;
+        }
+
+        .review-select {
+            border-radius: 14px;
+            padding: 10px 12px;
+        }
+
+        .review-abstract {
+            line-height: 1.7;
+            white-space: pre-line;
+        }
+
+        .card {
+            border-radius: 20px;
+        }
+    </style>
+}

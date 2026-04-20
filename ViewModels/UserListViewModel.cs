@@ -9,6 +9,7 @@
         public string RoleName { get; set; } = string.Empty;
         public List<string> Roles { get; set; } = new();
         public DateTime CreatedAt { get; set; }
-        
+        public bool HasSubmissions { get; set; }
+
     }
 }

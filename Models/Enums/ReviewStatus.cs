@@ -1,8 +1,10 @@
-﻿namespace MyDergiApp.Models.Enums
+﻿namespace MyDergiApp.Models
 {
     public enum ReviewStatus
     {
-        Assigned = 0,
-        Completed = 1
+        Pending = 0,
+        InReview = 1,
+        Completed = 2,
+        Cancelled = 3
     }
 }

@@ -259,7 +259,7 @@ namespace MyDergiApp.Migrations
                     b.ToTable("Journals");
                 });
 
-            modelBuilder.Entity("MyDergiApp.Entities.Submission", b =>
+            modelBuilder.Entity("MyDergiApp.Models.Submission", b =>
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
@@ -410,7 +410,7 @@ namespace MyDergiApp.Migrations
                         .IsRequired();
                 });
 
-            modelBuilder.Entity("MyDergiApp.Entities.Submission", b =>
+            modelBuilder.Entity("MyDergiApp.Models.Submission", b =>
                 {
                     b.HasOne("MyDergiApp.Entities.AppUser", "Author")
                         .WithMany()
@@ -436,7 +436,7 @@ namespace MyDergiApp.Migrations
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
-                    b.HasOne("MyDergiApp.Entities.Submission", "Submission")
+                    b.HasOne("MyDergiApp.Models.Submission", "Submission")
                         .WithMany()
                         .HasForeignKey("SubmissionId")
                         .OnDelete(DeleteBehavior.Cascade)

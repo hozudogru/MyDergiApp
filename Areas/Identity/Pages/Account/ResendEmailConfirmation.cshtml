@@ -1,0 +1,44 @@
+﻿@page
+@model ResendEmailConfirmationModel
+
+@{
+    ViewData["Title"] = "Onay E-postasını Tekrar Gönder";
+}
+
+<div class="row justify-content-center">
+    <div class="col-md-5">
+        <div class="card shadow-sm">
+            <div class="card-header text-center">
+                <h4>Onay E-postasını Tekrar Gönder</h4>
+            </div>
+
+            <div class="card-body">
+                <p class="text-muted">
+                    E-posta adresinizi girin, onay bağlantısını tekrar gönderelim.
+                </p>
+
+                <form method="post">
+                    <div asp-validation-summary="ModelOnly" class="text-danger mb-3"></div>
+
+                    <div class="form-floating mb-3">
+                        <input asp-for="Input.Email" class="form-control" placeholder="E-posta" />
+                        <label asp-for="Input.Email">E-posta</label>
+                        <span asp-validation-for="Input.Email" class="text-danger"></span>
+                    </div>
+
+                    <button type="submit" class="w-100 btn btn-primary">
+                        Onay E-postasını Gönder
+                    </button>
+                </form>
+
+                <div class="mt-3 text-center">
+                    <a asp-page="./Login">Giriş sayfasına dön</a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

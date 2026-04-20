@@ -1,0 +1,24 @@
+﻿@using MyDergiApp.Models
+@model List<Submission>
+
+<h3>Makalelerim</h3>
+
+<table class="table">
+    <thead>
+        <tr>
+            <th>Başlık</th>
+            <th>Tarih</th>
+            <th>Durum</th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (var item in Model)
+        {
+            <tr>
+                <td>@item.Title</td>
+                <td>@item.CreatedAt.ToString("dd.MM.yyyy")</td>
+                <td>@item.Status</td>
+            </tr>
+        }
+    </tbody>
+</table>

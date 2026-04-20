@@ -1,4 +1,5 @@
 ﻿using System.ComponentModel.DataAnnotations;
+using MyDergiApp.Models;
 
 namespace MyDergiApp.ViewModels.Submissions
 {
@@ -7,11 +8,10 @@ namespace MyDergiApp.ViewModels.Submissions
         public int SubmissionId { get; set; }
 
         [Required]
-        [Display(Name = "Durum")]
-        public string Status { get; set; } = "Submitted";
+        public SubmissionStatus Status { get; set; }
 
-        [Display(Name = "Editör Notu")]
-        [StringLength(1000)]
-        public string? EditorNote { get; set; }
+        public string? NoteToEditor { get; set; }
+
+        public string? DecisionNote { get; set; }
     }
 }
