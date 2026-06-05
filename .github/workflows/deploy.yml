@@ -30,10 +30,10 @@ jobs:
      
       - name: Restore
         run: dotnet restore MyDergiApp/MyDergiApp.csproj
-
+      
       - name: Build
         run: dotnet build MyDergiApp/MyDergiApp.csproj --configuration Release --no-restore
-
+      
       - name: Publish
         run: dotnet publish MyDergiApp/MyDergiApp.csproj -c Release -o ./publish
   
