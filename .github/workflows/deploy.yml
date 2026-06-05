@@ -23,19 +23,20 @@ jobs:
           dotnet-version: '8.0.x'
 
       - name: Proje dosyasını bul
+        id: find_project
         run: |
-          pwd
-          ls -la
-          find . -name "*.csproj"
-     
+          PROJECT_FILE=$(find . -name "*.csproj" | head -n 1)
+          echo "PROJECT_FILE=$PROJECT_FILE" >> $GITHUB_ENV
+          echo "Bulunan proje: $PROJECT_FILE"
+
       - name: Restore
-        run: dotnet restore MyDergiApp/MyDergiApp.csproj
-      
+        run: dotnet restore "$PROJECT_FILE"
+
       - name: Build
-        run: dotnet build MyDergiApp/MyDergiApp.csproj --configuration Release --no-restore
-      
+        run: dotnet build "$PROJECT_FILE" --configuration Release --no-restore
+
       - name: Publish
-        run: dotnet publish MyDergiApp/MyDergiApp.csproj -c Release -o ./publish
+        run: dotnet publish "$PROJECT_FILE" -c Release -o ./publish
   
       - name: Sunucuda geçici klasörü hazırla
         uses: appleboy/ssh-action@v1.0.3
