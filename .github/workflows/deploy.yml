@@ -29,14 +29,13 @@ jobs:
           find . -name "*.csproj"
 
       - name: Restore
-        run: dotnet restore ./MyDergiApp.csproj
-
+        run: dotnet restore MyDergiApp.csproj
+      
       - name: Build
-        run: dotnet build ./MyDergiApp.csproj --configuration Release --no-restore
-
+        run: dotnet build MyDergiApp.csproj --configuration Release --no-restore
+      
       - name: Publish
-        run: dotnet publish ./MyDergiApp.csproj -c Release -o ./publish
-
+        run: dotnet publish MyDergiApp.csproj -c Release -o ./publish
       - name: Publish çıktısını paketle
         run: |
           cd publish
