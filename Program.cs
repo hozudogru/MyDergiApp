@@ -17,11 +17,12 @@ builder.Services.AddScoped<EmailService>();
 builder.Services.AddScoped<EmailTemplateService>();
 
 // DbContext
-// DbContext
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
 
 builder.Services.AddDbContext<AppDbContext>(options =>
-    options.UseNpgsql(connectionString));// Identity
+    options.UseNpgsql(connectionString));
+
+// Identity
 builder.Services
     .AddIdentity<AppUser, IdentityRole>(options =>
     {
@@ -50,7 +51,7 @@ builder.Services.AddRazorPages();
 
 var app = builder.Build();
 
-// DB migrate + roles + test data
+// DB migrate + roles + default admin
 using (var scope = app.Services.CreateScope())
 {
     var services = scope.ServiceProvider;
@@ -94,6 +95,7 @@ using (var scope = app.Services.CreateScope())
             };
 
             var createResult = await userManager.CreateAsync(user, password);
+
             if (!createResult.Succeeded)
             {
                 var errors = string.Join(" | ", createResult.Errors.Select(e => e.Description));
@@ -125,6 +127,7 @@ using (var scope = app.Services.CreateScope())
             if (updated)
             {
                 var updateResult = await userManager.UpdateAsync(user);
+
                 if (!updateResult.Succeeded)
                 {
                     var errors = string.Join(" | ", updateResult.Errors.Select(e => e.Description));
@@ -136,6 +139,7 @@ using (var scope = app.Services.CreateScope())
         if (!await userManager.IsInRoleAsync(user, role))
         {
             var addRoleResult = await userManager.AddToRoleAsync(user, role);
+
             if (!addRoleResult.Succeeded)
             {
                 var errors = string.Join(" | ", addRoleResult.Errors.Select(e => e.Description));
@@ -146,101 +150,12 @@ using (var scope = app.Services.CreateScope())
         return user;
     }
 
-    var adminUser = await EnsureUserAsync(
+    await EnsureUserAsync(
         "admin@dergi.com",
         "admin",
         "Admin123!",
         "Admin",
         "Sistem Yöneticisi");
-
-    var editorUser = await EnsureUserAsync(
-        "editor@dergi.com",
-        "editor",
-        "Editor123!",
-        "Editor",
-        "Test Editör");
-
-    var reviewerUser = await EnsureUserAsync(
-        "reviewer@dergi.com",
-        "reviewer",
-        "Reviewer123!",
-        "Reviewer",
-        "Test Hakem");
-
-    var authorUser = await EnsureUserAsync(
-        "author@dergi.com",
-        "author",
-        "Author123!",
-        "Author",
-        "Test Yazar");
-
-    var existingSubmission = await dbContext.Submissions
-        .Include(s => s.Reviews)
-        .FirstOrDefaultAsync(s => s.Title == "Test Article");
-
-    if (existingSubmission == null)
-    {
-        var submission = new Submission
-        {
-            Title = "Test Article",
-            Abstract = "Bu, hakem modülünü test etmek için oluşturulmuş örnek makaledir.",
-            Keywords = "test, review, journal",
-            AuthorId = authorUser.Id,
-            FilePath = "/uploads/test-article.pdf",
-            Status = SubmissionStatus.Gonderildi,
-            CreatedAt = DateTime.UtcNow,
-            UpdatedAt = DateTime.UtcNow,
-            NoteToEditor = "Bu makale test amaçlı oluşturulmuştur.",
-            DecisionNote = ""
-        };
-
-        dbContext.Submissions.Add(submission);
-        await dbContext.SaveChangesAsync();
-
-        var assignmentExists = await dbContext.SubmissionReviewers
-            .AnyAsync(x => x.SubmissionId == submission.Id && x.ReviewerId == reviewerUser.Id);
-
-        if (!assignmentExists)
-        {
-            dbContext.SubmissionReviewers.Add(new SubmissionReviewer
-            {
-                SubmissionId = submission.Id,
-                ReviewerId = reviewerUser.Id,
-                Status = ReviewerAssignmentStatus.Assigned,
-                ReviewRound = submission.CurrentReviewRound,
-                AssignedAt = DateTime.UtcNow,
-                CompletedAt = null,
-                ReviewNote = null
-            });
-        }
-
-        dbContext.Reviews.Add(new Review
-        {
-            SubmissionId = submission.Id,
-            ReviewerId = reviewerUser.Id,
-            ReviewRound = submission.CurrentReviewRound,
-            Comments = "Genel olarak umut verici bir çalışma. Yöntem kısmı daha ayrıntılı yazılabilir.",
-            CommentToAuthor = "Literatür bölümü genişletilmeli ve yöntem daha açık anlatılmalıdır.",
-            CommentToEditor = "Makale yayın potansiyeli taşıyor ancak revizyon gerekli.",
-            Strengths = "Konu güncel, problem tanımı açık.",
-            Weaknesses = "Yöntem bölümü kısa, bazı kaynaklar eksik.",
-            ScopeFit = "Evet",
-            Decision = "Minor Revision",
-            OriginalityScore = 4,
-            MethodologyScore = 3,
-            LiteratureScore = 3,
-            WritingQualityScore = 4,
-            OverallScore = 7,
-            HasEthicalIssue = false,
-            EthicalConcerns = null,
-            IsDraft = true,
-            CreatedAt = DateTime.UtcNow,
-            UpdatedAt = DateTime.UtcNow,
-            SubmittedAt = null
-        });
-
-        await dbContext.SaveChangesAsync();
-    }
 }
 
 if (!app.Environment.IsDevelopment())
@@ -251,6 +166,7 @@ if (!app.Environment.IsDevelopment())
 
 app.UseHttpsRedirection();
 app.UseStaticFiles();
+
 app.UseRouting();
 
 app.UseAuthentication();
@@ -276,6 +192,7 @@ app.Use(async (context, next) =>
         if (user != null)
         {
             var roles = await userManager.GetRolesAsync(user);
+
             if (!roles.Any())
             {
                 await userManager.AddToRoleAsync(user, "Author");
