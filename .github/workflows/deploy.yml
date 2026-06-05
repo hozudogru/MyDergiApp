@@ -28,8 +28,8 @@ jobs:
           ls -la
           find . -name "*.csproj"
      
-       - name: Restore
-         run: dotnet restore MyDergiApp/MyDergiApp.csproj
+      - name: Restore
+        run: dotnet restore MyDergiApp/MyDergiApp.csproj
 
       - name: Build
         run: dotnet build MyDergiApp/MyDergiApp.csproj --configuration Release --no-restore
@@ -58,7 +58,7 @@ jobs:
           port: ${{ secrets.PORT }}
           source: "mydergiapp.tar.gz"
           target: "/tmp/mydergiapp_deploy"
-
+              
       - name: Canlıya al ve servisi yeniden başlat
         uses: appleboy/ssh-action@v1.0.3
         with:
