@@ -27,20 +27,16 @@ jobs:
           pwd
           ls -la
           find . -name "*.csproj"
+     
+       - name: Restore
+         run: dotnet restore MyDergiApp/MyDergiApp.csproj
 
-      - name: Restore
-        run: dotnet restore MyDergiApp.csproj
-      
       - name: Build
-        run: dotnet build MyDergiApp.csproj --configuration Release --no-restore
-      
-      - name: Publish
-        run: dotnet publish MyDergiApp.csproj -c Release -o ./publish
-      - name: Publish çıktısını paketle
-        run: |
-          cd publish
-          tar -czf ../mydergiapp.tar.gz .
+        run: dotnet build MyDergiApp/MyDergiApp.csproj --configuration Release --no-restore
 
+      - name: Publish
+        run: dotnet publish MyDergiApp/MyDergiApp.csproj -c Release -o ./publish
+  
       - name: Sunucuda geçici klasörü hazırla
         uses: appleboy/ssh-action@v1.0.3
         with:
