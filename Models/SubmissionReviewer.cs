@@ -1,5 +1,4 @@
 ﻿using MyDergiApp.Entities;
-using System.ComponentModel.DataAnnotations;
 
 namespace MyDergiApp.Models
 {
@@ -10,19 +9,26 @@ namespace MyDergiApp.Models
         public int SubmissionId { get; set; }
         public Submission? Submission { get; set; }
 
-        [Required]
         public string ReviewerId { get; set; } = string.Empty;
         public AppUser? Reviewer { get; set; }
 
+        public ReviewerAssignmentStatus Status { get; set; } = ReviewerAssignmentStatus.Assigned;
+        public int ReviewRound { get; set; } = 1;
+
+        public string? ReviewNote { get; set; }
+
         public DateTime AssignedAt { get; set; } = DateTime.UtcNow;
-
-        public ReviewStatus Status { get; set; } = ReviewStatus.Pending;
-
         public DateTime? CompletedAt { get; set; }
+        public DateTime? DueDate { get; set; }
 
-        public string Recommendation { get; set; } = string.Empty;
+        public DateTime? ReminderSentAt { get; set; }
 
-        public string ReviewText { get; set; } = string.Empty;
-        public string ReviewNote { get; set; } = string.Empty;
+        public int ReminderCount { get; set; } = 0;
+
+        public string? CancelReason { get; set; }
+
+        public DateTime? CancelledAt { get; set; }
+
+        public string? CancelledByUserId { get; set; }
     }
 }

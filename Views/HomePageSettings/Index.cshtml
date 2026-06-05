@@ -1,0 +1,497 @@
+@model MyDergiApp.Models.HomePageSettings
+
+@{
+    ViewData["Title"] = "Ana Sayfa Ayarları";
+}
+
+<div class="card border-0 shadow-sm">
+    <div class="card-header bg-white border-0 py-3">
+        <h3 class="mb-0 fw-bold">Ana Sayfa Ayarları</h3>
+    </div>
+
+    <div class="card-body">
+        @if (TempData["Success"] != null)
+        {
+            <div class="alert alert-success rounded-4 border-0">@TempData["Success"]</div>
+        }
+
+        <form asp-action="Index" method="post" enctype="multipart/form-data">
+            @Html.AntiForgeryToken()
+
+            <input type="hidden" asp-for="Id" />
+            <input type="hidden" asp-for="LogoPath" />
+            <input type="hidden" asp-for="BannerImagePath" />
+            <input type="hidden" asp-for="HeaderLogoPath" />
+            <input type="hidden" asp-for="HeaderBackgroundImagePath" />
+
+            <input type="hidden" name="removeHeaderLogo" id="removeHeaderLogo" value="false" />
+            <input type="hidden" name="removeHeaderBackgroundImage" id="removeHeaderBackgroundImage" value="false" />
+            <input type="hidden" name="removeBannerImage" id="removeBannerImage" value="false" />
+
+            <div asp-validation-summary="ModelOnly" class="text-danger mb-3"></div>
+
+            <hr class="my-4" />
+
+            <h5 class="fw-bold mb-3">Üst Banner / Başlık Alanı</h5>
+
+            <div class="form-check form-switch mb-3">
+                <input asp-for="ShowHeaderLogo" class="form-check-input" />
+                <label asp-for="ShowHeaderLogo" class="form-check-label">Logo gösterilsin</label>
+            </div>
+
+            <div class="mb-3">
+                <label asp-for="HeaderTitle" class="form-label fw-semibold">Üst Başlık</label>
+                <input asp-for="HeaderTitle" class="form-control" />
+            </div>
+
+            <div class="mb-3">
+                <label asp-for="HeaderSubtitle" class="form-label fw-semibold">Üst Alt Başlık</label>
+                <input asp-for="HeaderSubtitle" class="form-control" />
+            </div>
+
+            <div class="mb-3">
+                <label asp-for="HeaderRightText" class="form-label fw-semibold">Sağ Taraftaki Yazı</label>
+                <input asp-for="HeaderRightText" class="form-control" />
+            </div>
+
+            <div class="row g-3">
+                <div class="col-md-6">
+                    <label class="form-label fw-semibold">Header Logo</label>
+                    <input type="file"
+                           name="headerLogo"
+                           class="form-control"
+                           accept=".jpg,.jpeg,.png,.webp"
+                           onchange="showSelectedPreview(this, 'headerLogoPreview', 'removeHeaderLogo')" />
+
+                    <div id="headerLogoPreview"
+                         class="image-preview-box mt-3"
+                         style="@(string.IsNullOrWhiteSpace(Model.HeaderLogoPath) ? "display:none;" : "display:inline-flex;")">
+                        <button type="button"
+                                class="image-remove-btn"
+                                onclick="removeImagePreview('headerLogoPreview', 'removeHeaderLogo')">
+                            ×
+                        </button>
+
+                        <img src="@(string.IsNullOrWhiteSpace(Model.HeaderLogoPath) ? "" : Model.HeaderLogoPath)"
+                             alt="Header Logo"
+                             class="image-preview-contain" />
+                    </div>
+
+                    @if (string.IsNullOrWhiteSpace(Model.HeaderLogoPath))
+                    {
+                        <div class="text-muted small mt-2">
+                            Header logosu henüz yüklenmedi.
+                        </div>
+                    }
+                </div>
+
+                <div class="col-md-6">
+                    <label class="form-label fw-semibold">Header Arka Plan Görseli</label>
+                    <input type="file"
+                           name="headerBackgroundImage"
+                           class="form-control"
+                           accept=".jpg,.jpeg,.png,.webp"
+                           onchange="showSelectedPreview(this, 'headerBackgroundPreview', 'removeHeaderBackgroundImage')" />
+
+                    <div id="headerBackgroundPreview"
+                         class="image-preview-box mt-3"
+                         style="@(string.IsNullOrWhiteSpace(Model.HeaderBackgroundImagePath) ? "display:none;" : "display:inline-flex;")">
+                        <button type="button"
+                                class="image-remove-btn"
+                                onclick="removeImagePreview('headerBackgroundPreview', 'removeHeaderBackgroundImage')">
+                            ×
+                        </button>
+
+                        <img src="@(string.IsNullOrWhiteSpace(Model.HeaderBackgroundImagePath) ? "" : Model.HeaderBackgroundImagePath)"
+                             alt="Header Arka Plan"
+                             class="image-preview-cover" />
+                    </div>
+
+                    @if (string.IsNullOrWhiteSpace(Model.HeaderBackgroundImagePath))
+                    {
+                        <div class="text-muted small mt-2">
+                            Header arka plan görseli henüz yüklenmedi.
+                        </div>
+                    }
+                </div>
+            </div>
+
+            <hr class="my-4" />
+
+            <h5 class="fw-bold mb-3">Banner Ayarları</h5>
+
+            <div class="form-check form-switch mb-3">
+                <input asp-for="ShowBanner" class="form-check-input" />
+                <label asp-for="ShowBanner" class="form-check-label">Banner gösterilsin</label>
+            </div>
+
+            <div class="mb-3">
+                <label asp-for="BannerLabel" class="form-label fw-semibold">Banner Etiketi</label>
+                <input asp-for="BannerLabel" class="form-control" />
+            </div>
+
+            <div class="mb-3">
+                <label asp-for="BannerTitle" class="form-label fw-semibold">Banner Başlığı</label>
+                <input asp-for="BannerTitle" class="form-control" />
+            </div>
+
+            <div class="mb-3">
+                <label asp-for="BannerDescription" class="form-label fw-semibold">Banner Açıklaması</label>
+                <textarea asp-for="BannerDescription" class="form-control" rows="4"></textarea>
+            </div>
+
+            <div class="row g-3">
+                <div class="col-md-6">
+                    <label asp-for="BannerPrimaryButtonText" class="form-label fw-semibold">1. Buton Metni</label>
+                    <input asp-for="BannerPrimaryButtonText" class="form-control" />
+                </div>
+
+                <div class="col-md-6">
+                    <label asp-for="BannerPrimaryButtonUrl" class="form-label fw-semibold">1. Buton Linki</label>
+                    <input asp-for="BannerPrimaryButtonUrl" class="form-control" />
+                </div>
+
+                <div class="col-md-6">
+                    <label asp-for="BannerSecondaryButtonText" class="form-label fw-semibold">2. Buton Metni</label>
+                    <input asp-for="BannerSecondaryButtonText" class="form-control" />
+                </div>
+
+                <div class="col-md-6">
+                    <label asp-for="BannerSecondaryButtonUrl" class="form-label fw-semibold">2. Buton Linki</label>
+                    <input asp-for="BannerSecondaryButtonUrl" class="form-control" />
+                </div>
+            </div>
+
+            <div class="mt-3 mb-3">
+                <label class="form-label fw-semibold">Banner Görseli</label>
+                <input type="file"
+                       name="bannerImage"
+                       class="form-control"
+                       accept=".jpg,.jpeg,.png,.webp"
+                       onchange="showSelectedPreview(this, 'bannerImagePreview', 'removeBannerImage')" />
+
+                <div id="bannerImagePreview"
+                     class="image-preview-box mt-3"
+                     style="@(string.IsNullOrWhiteSpace(Model.BannerImagePath) ? "display:none;" : "display:inline-flex;")">
+                    <button type="button"
+                            class="image-remove-btn"
+                            onclick="removeImagePreview('bannerImagePreview', 'removeBannerImage')">
+                        ×
+                    </button>
+
+                    <img src="@(string.IsNullOrWhiteSpace(Model.BannerImagePath) ? "" : Model.BannerImagePath)"
+                         alt="Banner Görseli"
+                         class="image-preview-cover large" />
+                </div>
+
+                @if (string.IsNullOrWhiteSpace(Model.BannerImagePath))
+                {
+                    <div class="text-muted small mt-2">
+                        Banner görseli henüz yüklenmedi.
+                    </div>
+                }
+            </div>
+
+            <hr class="my-4" />
+
+            <h5 class="fw-bold mb-3">Tema / Renk Ayarları</h5>
+
+            <div class="row g-3">
+                <div class="col-md-4">
+                    <label asp-for="ThemeName" class="form-label fw-semibold">Şablon</label>
+                    <select asp-for="ThemeName" class="form-select">
+                        <option value="classic">Klasik</option>
+                        <option value="modern">Modern</option>
+                        <option value="darkblue">Lacivert Akademik</option>
+                        <option value="green">Yeşil Kurumsal</option>
+                        <option value="burgundy">Bordo Dergi</option>
+                    </select>
+                </div>
+
+                <div class="col-md-4">
+                    <label asp-for="PrimaryColor" class="form-label fw-semibold">Ana Renk</label>
+                    <input asp-for="PrimaryColor" type="color" class="form-control form-control-color" />
+                </div>
+
+                <div class="col-md-4">
+                    <label asp-for="SecondaryColor" class="form-label fw-semibold">İkincil Renk</label>
+                    <input asp-for="SecondaryColor" type="color" class="form-control form-control-color" />
+                </div>
+
+                <div class="col-md-4">
+                    <label asp-for="HeaderBgColor" class="form-label fw-semibold">Üst Alan Rengi</label>
+                    <input asp-for="HeaderBgColor" type="color" class="form-control form-control-color" />
+                </div>
+
+                <div class="col-md-4">
+                    <label asp-for="NavBgColor" class="form-label fw-semibold">Menü Rengi</label>
+                    <input asp-for="NavBgColor" type="color" class="form-control form-control-color" />
+                </div>
+
+                <div class="col-md-4">
+                    <label asp-for="BodyBgColor" class="form-label fw-semibold">Sayfa Arka Planı</label>
+                    <input asp-for="BodyBgColor" type="color" class="form-control form-control-color" />
+                </div>
+
+                <div class="col-md-4">
+                    <label asp-for="TextColor" class="form-label fw-semibold">Yazı Rengi</label>
+                    <input asp-for="TextColor" type="color" class="form-control form-control-color" />
+                </div>
+            </div>
+
+            <hr class="my-4" />
+
+            <h5 class="fw-bold mb-3">Genel Ana Sayfa İçerikleri</h5>
+
+            <div class="row g-3">
+                <div class="col-md-6">
+                    <label asp-for="JournalTitle" class="form-label fw-semibold">Dergi Adı</label>
+                    <input asp-for="JournalTitle" class="form-control" />
+                    <span asp-validation-for="JournalTitle" class="text-danger"></span>
+                </div>
+
+                <div class="col-md-6">
+                    <label asp-for="JournalSubtitle" class="form-label fw-semibold">Alt Başlık</label>
+                    <input asp-for="JournalSubtitle" class="form-control" />
+                    <span asp-validation-for="JournalSubtitle" class="text-danger"></span>
+                </div>
+            </div>
+
+            <div class="row g-3 mt-1">
+                <div class="col-md-6">
+                    <label asp-for="HeroTitle" class="form-label fw-semibold">Karşılama Başlığı</label>
+                    <input asp-for="HeroTitle" class="form-control" />
+                    <span asp-validation-for="HeroTitle" class="text-danger"></span>
+                </div>
+
+                <div class="col-md-6">
+                    <label asp-for="AboutTitle" class="form-label fw-semibold">Hakkında Başlığı</label>
+                    <input asp-for="AboutTitle" class="form-control" />
+                    <span asp-validation-for="AboutTitle" class="text-danger"></span>
+                </div>
+            </div>
+
+            <div class="mb-3 mt-3">
+                <label asp-for="HeroDescription" class="form-label fw-semibold">Karşılama Açıklaması</label>
+                <textarea asp-for="HeroDescription" class="form-control" rows="4"></textarea>
+                <span asp-validation-for="HeroDescription" class="text-danger"></span>
+            </div>
+
+            <div class="mb-3">
+                <label asp-for="AboutContent" class="form-label fw-semibold">Dergi Hakkında</label>
+                <textarea asp-for="AboutContent" class="form-control" rows="6"></textarea>
+                <span asp-validation-for="AboutContent" class="text-danger"></span>
+            </div>
+
+            <div class="row g-3">
+                <div class="col-md-3">
+                    <label asp-for="PrintIssn" class="form-label fw-semibold">Basılı ISSN</label>
+                    <input asp-for="PrintIssn" class="form-control" />
+                </div>
+
+                <div class="col-md-3">
+                    <label asp-for="OnlineIssn" class="form-label fw-semibold">Online ISSN</label>
+                    <input asp-for="OnlineIssn" class="form-control" />
+                </div>
+
+                <div class="col-md-3">
+                    <label asp-for="ContactEmail" class="form-label fw-semibold">E-posta</label>
+                    <input asp-for="ContactEmail" class="form-control" />
+                </div>
+
+                <div class="col-md-3">
+                    <label asp-for="ContactPhone" class="form-label fw-semibold">Telefon</label>
+                    <input asp-for="ContactPhone" class="form-control" />
+                </div>
+            </div>
+
+            <div class="mb-3 mt-3">
+                <label asp-for="Address" class="form-label fw-semibold">Adres</label>
+                <input asp-for="Address" class="form-control" />
+            </div>
+
+            <div class="mb-3">
+                <label asp-for="FooterText" class="form-label fw-semibold">Alt Bilgi Metni</label>
+                <textarea asp-for="FooterText" class="form-control" rows="3"></textarea>
+            </div>
+
+            <div class="alert alert-info rounded-4 border-0">
+                Logo yönetimi artık <strong>Üst Banner / Başlık Alanı → Header Logo</strong> bölümünden yapılır.
+                Eski Logo alanı kaldırıldı.
+            </div>
+
+            <div class="form-check form-switch mb-4">
+                <input asp-for="IsActive" class="form-check-input" />
+                <label asp-for="IsActive" class="form-check-label">Aktif</label>
+            </div>
+
+            <button type="submit" class="btn btn-primary px-4">Kaydet</button>
+        </form>
+    </div>
+</div>
+
+<style>
+    .image-preview-box {
+        position: relative;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        border: 1px solid #e5e7eb;
+        border-radius: 16px;
+        background: #f8fafc;
+        padding: 10px;
+        box-shadow: 0 8px 24px rgba(15, 23, 42, .08);
+    }
+
+    .image-remove-btn {
+        position: absolute;
+        top: -10px;
+        right: -10px;
+        width: 28px;
+        height: 28px;
+        border-radius: 50%;
+        border: none;
+        background: #dc3545;
+        color: #fff;
+        font-size: 20px;
+        line-height: 24px;
+        font-weight: 700;
+        cursor: pointer;
+        box-shadow: 0 6px 18px rgba(220, 53, 69, .35);
+        z-index: 2;
+    }
+
+        .image-remove-btn:hover {
+            background: #b02a37;
+        }
+
+    .image-preview-contain {
+        max-width: 260px;
+        max-height: 160px;
+        object-fit: contain;
+        border-radius: 12px;
+    }
+
+    .image-preview-cover {
+        width: 320px;
+        max-width: 100%;
+        height: 160px;
+        object-fit: cover;
+        border-radius: 12px;
+    }
+
+        .image-preview-cover.large {
+            width: 420px;
+            height: 180px;
+        }
+</style>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+
+    <script>
+        function removeImagePreview(previewId, hiddenInputId) {
+            const preview = document.getElementById(previewId);
+            const input = document.getElementById(hiddenInputId);
+
+            if (input) {
+                input.value = "true";
+            }
+
+            if (preview) {
+                preview.style.display = "none";
+            }
+        }
+
+        function showSelectedPreview(fileInput, previewId, hiddenInputId) {
+            const file = fileInput.files && fileInput.files[0];
+            if (!file) return;
+
+            const input = document.getElementById(hiddenInputId);
+            if (input) {
+                input.value = "false";
+            }
+
+            const preview = document.getElementById(previewId);
+            if (!preview) return;
+
+            const img = preview.querySelector("img");
+            if (!img) return;
+
+            img.src = URL.createObjectURL(file);
+            preview.style.display = "inline-flex";
+        }
+
+        const themePresets = {
+            classic: {
+                primary: "#0d6efd",
+                secondary: "#198754",
+                header: "#ffffff",
+                nav: "#ffffff",
+                body: "#f8fafc",
+                text: "#111827"
+            },
+            modern: {
+                primary: "#2563eb",
+                secondary: "#7c3aed",
+                header: "#ffffff",
+                nav: "#f8fafc",
+                body: "#eef2ff",
+                text: "#0f172a"
+            },
+            darkblue: {
+                primary: "#0b2c5f",
+                secondary: "#f59e0b",
+                header: "#0b2c5f",
+                nav: "#102a43",
+                body: "#f1f5f9",
+                text: "#111827"
+            },
+            green: {
+                primary: "#166534",
+                secondary: "#65a30d",
+                header: "#ecfdf5",
+                nav: "#ffffff",
+                body: "#f0fdf4",
+                text: "#102a1f"
+            },
+            burgundy: {
+                primary: "#7f1d1d",
+                secondary: "#b45309",
+                header: "#fff7ed",
+                nav: "#ffffff",
+                body: "#fef2f2",
+                text: "#1f2937"
+            }
+        };
+
+        function applyThemePreset(themeName) {
+            const theme = themePresets[themeName];
+            if (!theme) return;
+
+            const primary = document.querySelector('[name="PrimaryColor"]');
+            const secondary = document.querySelector('[name="SecondaryColor"]');
+            const header = document.querySelector('[name="HeaderBgColor"]');
+            const nav = document.querySelector('[name="NavBgColor"]');
+            const body = document.querySelector('[name="BodyBgColor"]');
+            const text = document.querySelector('[name="TextColor"]');
+
+            if (primary) primary.value = theme.primary;
+            if (secondary) secondary.value = theme.secondary;
+            if (header) header.value = theme.header;
+            if (nav) nav.value = theme.nav;
+            if (body) body.value = theme.body;
+            if (text) text.value = theme.text;
+        }
+
+        document.addEventListener("DOMContentLoaded", function () {
+            const themeSelect = document.querySelector('[name="ThemeName"]');
+
+            if (themeSelect) {
+                themeSelect.addEventListener("change", function () {
+                    applyThemePreset(this.value);
+                });
+            }
+        });
+    </script>
+}

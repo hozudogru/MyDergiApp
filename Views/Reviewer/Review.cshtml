@@ -3,11 +3,30 @@
 
 @{
     ViewData["Title"] = "Makale Değerlendir";
+
     Review? existingReview = ViewBag.ExistingReview as Review;
+    SubmissionFile? reviewerAttachmentFile = ViewBag.ReviewerAttachmentFile as SubmissionFile;
+
+    var currentReviewRound = ViewBag.CurrentReviewRound != null
+        ? Convert.ToInt32(ViewBag.CurrentReviewRound)
+        : Model.CurrentReviewRound;
+
+    var isReadOnly = ViewBag.IsReadOnly == true;
+
     var decision = existingReview?.Decision ?? "";
     var lastUpdate = existingReview?.UpdatedAt ?? existingReview?.CreatedAt;
-}
 
+}
+<div class="alert alert-info border-0 rounded-4 shadow-sm">
+    Bu değerlendirme <strong>@currentReviewRound. Tur</strong> hakem değerlendirmesidir.
+
+    @if (isReadOnly)
+    {
+        <span class="ms-2 badge rounded-pill bg-warning text-dark">
+            Sadece görüntüleme
+        </span>
+    }
+</div>
 <div class="review-page">
     <div class="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-4">
         <div>
@@ -30,6 +49,27 @@
         <div class="alert alert-success rounded-4 border-0 shadow-sm">@TempData["Success"]</div>
     }
 
+    @if (existingReview != null)
+    {
+        <div class="alert alert-info border-0 shadow-sm rounded-4 mb-4">
+            <i class="bi bi-info-circle me-2"></i>
+            Bu makale için daha önce kayıtlı değerlendirmeniz bulunmaktadır.
+            @if (existingReview.IsDraft)
+            {
+                <span> Durum: <strong>Taslak</strong></span>
+            }
+            else
+            {
+                <span> Durum: <strong>Nihai gönderildi</strong></span>
+            }
+        </div>
+    }
+    @if (isReadOnly)
+    {
+        <div class="alert alert-warning border-0 rounded-4 shadow-sm mb-4">
+            Bu değerlendirme nihai olarak gönderilmiştir. Artık düzenleme yapılamaz.
+        </div>
+    }
     <div class="row g-4">
         <div class="col-lg-8">
             <div class="card border-0 shadow-sm mb-4 section-card">
@@ -67,9 +107,10 @@
                 </div>
             </div>
 
-            <form asp-action="Review" method="post">
+            <form asp-action="Review" method="post" enctype="multipart/form-data" id="reviewForm">
                 @Html.AntiForgeryToken()
                 <input type="hidden" name="submissionId" value="@Model.Id" />
+                <input type="hidden" name="reviewRound" value="@currentReviewRound" />
 
                 <div class="card border-0 shadow-sm mb-4 section-card">
                     <div class="card-body p-4">
@@ -80,9 +121,9 @@
                                 <label class="form-label fw-semibold">Makale Yayın Kapsamına Uygun mu?</label>
                                 <select class="form-select rounded-4" name="scopeFit">
                                     <option value="">Seçiniz</option>
-                                    <option>Evet</option>
-                                    <option>Kısmen</option>
-                                    <option>Hayır</option>
+                                    <option value="Evet" selected="@(existingReview?.ScopeFit == "Evet")">Evet</option>
+                                    <option value="Kısmen" selected="@(existingReview?.ScopeFit == "Kısmen")">Kısmen</option>
+                                    <option value="Hayır" selected="@(existingReview?.ScopeFit == "Hayır")">Hayır</option>
                                 </select>
                             </div>
 
@@ -202,6 +243,105 @@
                         </div>
                     </div>
                 </div>
+                @{
+                    var attachmentPath = !string.IsNullOrWhiteSpace(existingReview?.ReviewerAttachmentPath)
+                        ? existingReview.ReviewerAttachmentPath
+                        : reviewerAttachmentFile?.StoredFilePath;
+
+                    var attachmentName = !string.IsNullOrWhiteSpace(existingReview?.ReviewerAttachmentOriginalFileName)
+                        ? existingReview.ReviewerAttachmentOriginalFileName
+                        : reviewerAttachmentFile?.OriginalFileName;
+                }
+
+                <div class="card border-0 shadow-sm mb-4 section-card">
+                    <div class="card-body p-4">
+                        <div class="section-title">Hakem Ek Dosyası</div>
+
+                        @if (isReadOnly)
+                        {
+                            if (!string.IsNullOrWhiteSpace(attachmentPath))
+                            {
+                                <div class="alert alert-light border rounded-4 mb-3">
+                                    <div class="fw-semibold mb-2">Yüklenen Hakem Dosyası</div>
+
+                                    <a href="@Url.Content(attachmentPath)"
+                                       target="_blank"
+                                       class="btn btn-outline-primary rounded-pill px-4">
+                                        <i class="bi bi-paperclip me-1"></i>
+                                        @(attachmentName ?? "Hakem ek dosyasını aç")
+                                    </a>
+                                </div>
+
+                                @if (!string.IsNullOrWhiteSpace(existingReview?.ReviewerAttachmentNote))
+                                {
+                                    <div class="alert alert-info border-0 rounded-4 mb-0">
+                                        <strong>Dosya Açıklaması:</strong>
+                                        <div class="mt-1">
+                                            @existingReview.ReviewerAttachmentNote
+                                        </div>
+                                    </div>
+                                }
+
+                                <div class="small text-muted mt-3">
+                                    Yazara iletilebilir:
+                                    <strong>@(existingReview?.SendAttachmentToAuthor == true ? "Evet" : "Hayır")</strong>
+                                </div>
+                            }
+                            else
+                            {
+                                <div class="alert alert-light border rounded-4 mb-0">
+                                    <i class="bi bi-info-circle me-1"></i>
+                                    Bu değerlendirme için hakem ek dosyası yüklenmemiştir.
+                                </div>
+                            }
+                        }
+                        else
+                        {
+                            <div class="mb-3">
+                                <label class="form-label fw-semibold">Ek Dosya (isteğe bağlı)</label>
+                                <input type="file"
+                                       name="reviewerAttachment"
+                                       class="form-control rounded-4"
+                                       accept=".pdf,.doc,.docx,.jpg,.jpeg,.png" />
+
+                                <div class="form-text">
+                                    Bu dosyada adınız, kurumunuz veya kimliğinizi açığa çıkaran bilgi bulunmamalıdır.
+                                </div>
+                            </div>
+
+                            <div class="mb-3">
+                                <label class="form-label fw-semibold">Ek Dosya Açıklaması</label>
+                                <textarea name="reviewerAttachmentNote"
+                                          class="form-control rounded-4"
+                                          rows="3"
+                                          placeholder="Bu dosyanın içeriğini kısaca açıklayabilirsiniz...">@(existingReview?.ReviewerAttachmentNote ?? "")</textarea>
+                            </div>
+
+                            <input type="hidden" name="sendAttachmentToAuthor" value="false" />
+
+                            <div class="form-check mb-0">
+                                <input class="form-check-input"
+                                       type="checkbox"
+                                       name="sendAttachmentToAuthor"
+                                       value="true"
+                                @(existingReview?.SendAttachmentToAuthor == true ? "checked" : "") />
+
+                                <label class="form-check-label">
+                                    Bu ek dosya yazara iletilebilir
+                                </label>
+                            </div>
+
+                            @if (!string.IsNullOrWhiteSpace(attachmentPath))
+                            {
+                                <div class="mt-3">
+                                    <span class="badge bg-info-subtle text-info-emphasis">
+                                        Mevcut dosya: @(attachmentName ?? "Hakem ek dosyası")
+                                    </span>
+                                </div>
+                            }
+                        }
+                    </div>
+                </div>
 
                 <div class="card border-0 shadow-sm mb-4 section-card">
                     <div class="card-body p-4">
@@ -280,7 +420,7 @@
                     <div class="info-row border-0 pb-0">
                         <div class="info-label">Değerlendirme İpucu</div>
                         <div class="small text-muted">
-                            Yazara yorum alanında kimlik açığa çıkaracak ifade kullanmayın.
+                            Yazara yorum ve ek dosya alanlarında kimliğinizi açığa çıkaracak ifade kullanmayın.
                         </div>
                     </div>
                 </div>
@@ -343,4 +483,24 @@
             padding: .8rem .95rem;
         }
     </style>
+    @if (isReadOnly)
+    {
+        <script>
+            document.addEventListener("DOMContentLoaded", function () {
+                const form = document.getElementById("reviewForm");
+
+                if (!form) return;
+
+                form.querySelectorAll("input, textarea, select").forEach(function (el) {
+                    if (el.type !== "hidden") {
+                        el.disabled = true;
+                    }
+                });
+
+                form.querySelectorAll("button[type='submit']").forEach(function (btn) {
+                    btn.style.display = "none";
+                });
+            });
+        </script>
+    }
 }

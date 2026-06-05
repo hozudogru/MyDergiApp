@@ -1,0 +1,355 @@
+﻿@model IEnumerable<MyDergiApp.ViewModels.Submissions.OnKontrolListeItemViewModel>
+@inject Microsoft.AspNetCore.Identity.UserManager<MyDergiApp.Entities.AppUser> UserManager
+
+@{
+    ViewData["Title"] = "Ön Kontrol Bekleyenler";
+
+    var sectionEditorsRaw = await UserManager.GetUsersInRoleAsync("Editor");
+
+    var sectionEditors = sectionEditorsRaw
+        .OrderBy(x => x.FullName ?? x.Email ?? x.UserName)
+        .ToList();
+
+    var totalCount = Model.Count();
+    var totalAuthors = Model.Sum(x => x.AuthorCount);
+    var totalFiles = Model.Sum(x => x.FileCount);
+}
+
+<div class="row g-3 mb-4">
+    <div class="col-md-4">
+        <div class="card border-0 shadow-sm stat-card">
+            <div class="card-body">
+                <div class="text-muted small">Bekleyen Makale</div>
+                <div class="fs-3 fw-bold">@totalCount</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-4">
+        <div class="card border-0 shadow-sm stat-card">
+            <div class="card-body">
+                <div class="text-muted small">Toplam Yazar</div>
+                <div class="fs-3 fw-bold">@totalAuthors</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-4">
+        <div class="card border-0 shadow-sm stat-card">
+            <div class="card-body">
+                <div class="text-muted small">Toplam Dosya</div>
+                <div class="fs-3 fw-bold">@totalFiles</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="card border-0 shadow-sm">
+    <div class="card-header bg-white border-0 py-3 d-flex flex-wrap gap-2 justify-content-between align-items-center">
+        <div>
+            <h3 class="mb-1 fw-bold">Ön Kontrol Bekleyen Makaleler</h3>
+            <div class="text-muted small">
+                Sadece gönderilmiş veya ön kontrol bekleyen makaleler listelenir.
+            </div>
+        </div>
+
+        <div style="min-width:280px;">
+            <input type="text"
+                   id="searchInput"
+                   class="form-control"
+                   placeholder="Başlık veya sorumlu yazar ara..." />
+        </div>
+    </div>
+
+    <div class="card-body">
+        @if (TempData["Success"] != null)
+        {
+            <div class="alert alert-success rounded-4 border-0 shadow-sm">
+                @TempData["Success"]
+            </div>
+        }
+
+        @if (TempData["Error"] != null)
+        {
+            <div class="alert alert-danger rounded-4 border-0 shadow-sm">
+                @TempData["Error"]
+            </div>
+        }
+
+        @if (!Model.Any())
+        {
+            <div class="alert alert-info mb-0 rounded-4 border-0 shadow-sm">
+                Ön kontrol bekleyen makale bulunmuyor.
+            </div>
+        }
+        else
+        {
+            <div class="table-responsive">
+                <table class="table align-middle onkontrol-table" id="submissionTable">
+                    <thead>
+                        <tr>
+                            <th style="width:70px;">#</th>
+                            <th>Makale</th>
+                            <th style="width:250px;">Sorumlu Yazar</th>
+                            <th style="width:110px;">Yazar</th>
+                            <th style="width:110px;">Dosya</th>
+                            <th style="width:170px;">Tarih</th>
+                            <th style="width:210px;">İşlemler</th>
+                        </tr>
+                    </thead>
+
+                    <tbody>
+                        @foreach (var item in Model)
+                        {
+                            var collapseId = $"actionPanel_{item.Id}";
+                            var confirmReturn = $"#{item.Id} numaralı makale yazara iade edilsin mi?";
+                            var confirmReject = $"#{item.Id} numaralı makale ön kontrol aşamasında reddedilsin mi?";
+                            var confirmAssign = $"#{item.Id} numaralı makale seçilen alan editörüne yönlendirilsin mi?";
+
+                            <tr class="main-row searchable-row"
+                                data-title="@($"{item.Title} {item.Subtitle}".ToLowerInvariant())"
+                                data-author="@($"{item.CorrespondingAuthorName} {item.CorrespondingAuthorEmail}".ToLowerInvariant())">
+
+                                <td class="fw-semibold">#@item.Id</td>
+
+                                <td>
+                                    <div class="fw-semibold">@item.Title</div>
+
+                                    @if (!string.IsNullOrWhiteSpace(item.Subtitle))
+                                    {
+                                        <div class="small text-muted mt-1">@item.Subtitle</div>
+                                    }
+
+                                    <div class="mt-2">
+                                        <span class="badge rounded-pill text-bg-warning-subtle border">
+                                            @(string.IsNullOrWhiteSpace(item.Status) ? "Ön Kontrol Bekliyor" : item.Status)
+                                        </span>
+                                    </div>
+                                </td>
+
+                                <td>
+                                    <div>@(item.CorrespondingAuthorName ?? "-")</div>
+                                    <div class="small text-muted">@(item.CorrespondingAuthorEmail ?? "-")</div>
+                                </td>
+
+                                <td>
+                                    <span class="badge rounded-pill text-bg-light border">
+                                        @item.AuthorCount Yazar
+                                    </span>
+                                </td>
+
+                                <td>
+                                    <span class="badge rounded-pill text-bg-light border">
+                                        @item.FileCount Dosya
+                                    </span>
+                                </td>
+
+                                <td>
+                                    @item.CreatedAt.ToLocalTime().ToString("dd.MM.yyyy HH:mm")
+                                </td>
+
+                                <td>
+                                    <div class="d-flex flex-column gap-2">
+                                        <a asp-controller="Submission"
+                                           asp-action="Detail"
+                                           asp-route-id="@item.Id"
+                                           class="btn btn-sm btn-outline-primary">
+                                            Görüntüle
+                                        </a>
+
+                                        <button class="btn btn-sm btn-outline-secondary"
+                                                type="button"
+                                                data-bs-toggle="collapse"
+                                                data-bs-target="#@collapseId"
+                                                aria-expanded="false"
+                                                aria-controls="@collapseId">
+                                            İşlem Paneli
+                                        </button>
+                                    </div>
+                                </td>
+                            </tr>
+
+                            <tr class="action-row searchable-row-child">
+                                <td colspan="7" class="p-0 border-0">
+                                    <div class="collapse" id="@collapseId">
+                                        <div class="action-panel">
+                                            <div class="row g-3">
+
+                                                <div class="col-lg-4">
+                                                    <div class="action-box">
+                                                        <div class="action-title">Alan Editörüne Yönlendir</div>
+
+                                                        @if (!sectionEditors.Any())
+                                                        {
+                                                            <div class="alert alert-warning small mb-0">
+                                                                Sistemde alan editörü rolüne sahip kullanıcı bulunamadı.
+                                                            </div>
+                                                        }
+                                                        else
+                                                        {
+                                                            <form asp-controller="Submission"
+                                                                  asp-action="AlanEditoruneYonlendir"
+                                                                  method="post"
+                                                                  onsubmit="return confirm('@confirmAssign');">
+                                                                @Html.AntiForgeryToken()
+
+                                                                <input type="hidden" name="id" value="@item.Id" />
+
+                                                                <div class="input-group">
+                                                                    <select name="sectionEditorId"
+                                                                            class="form-select form-select-sm"
+                                                                            required>
+                                                                        <option value="">Alan editörü seçiniz</option>
+
+                                                                        @foreach (var editor in sectionEditors)
+                                                                        {
+                                                                            <option value="@editor.Id">
+                                                                                @((editor.FullName ?? editor.Email) ?? editor.UserName)
+                                                                            </option>
+                                                                        }
+                                                                    </select>
+
+                                                                    <button type="submit" class="btn btn-success btn-sm">
+                                                                        Yönlendir
+                                                                    </button>
+                                                                </div>
+                                                            </form>
+                                                        }
+                                                    </div>
+                                                </div>
+
+                                                <div class="col-lg-4">
+                                                    <div class="action-box">
+                                                        <div class="action-title">Yazara İade</div>
+
+                                                        <form asp-controller="Submission"
+                                                              asp-action="YazaraIadeEt"
+                                                              method="post"
+                                                              onsubmit="return confirm('@confirmReturn');">
+                                                            @Html.AntiForgeryToken()
+
+                                                            <input type="hidden" name="id" value="@item.Id" />
+
+                                                            <textarea name="reason"
+                                                                      class="form-control form-control-sm mb-2"
+                                                                      rows="3"
+                                                                      maxlength="1000"
+                                                                      placeholder="İade gerekçesi"></textarea>
+
+                                                            <button type="submit" class="btn btn-warning btn-sm">
+                                                                Yazara İade
+                                                            </button>
+                                                        </form>
+                                                    </div>
+                                                </div>
+
+                                                <div class="col-lg-4">
+                                                    <div class="action-box">
+                                                        <div class="action-title">Reddet</div>
+
+                                                        <form asp-controller="Submission"
+                                                              asp-action="Reddet"
+                                                              method="post"
+                                                              onsubmit="return confirm('@confirmReject');">
+                                                            @Html.AntiForgeryToken()
+
+                                                            <input type="hidden" name="id" value="@item.Id" />
+
+                                                            <textarea name="reason"
+                                                                      class="form-control form-control-sm mb-2"
+                                                                      rows="3"
+                                                                      maxlength="1000"
+                                                                      placeholder="Red gerekçesi"></textarea>
+
+                                                            <button type="submit" class="btn btn-danger btn-sm">
+                                                                Reddet
+                                                            </button>
+                                                        </form>
+                                                    </div>
+                                                </div>
+
+                                            </div>
+                                        </div>
+                                    </div>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+    </div>
+</div>
+
+<style>
+    .stat-card {
+        border-radius: 1rem;
+    }
+
+    .onkontrol-table thead th {
+        border-top: 0;
+        white-space: nowrap;
+        font-size: .95rem;
+    }
+
+    .onkontrol-table .main-row td {
+        vertical-align: middle;
+        padding-top: 1rem;
+        padding-bottom: 1rem;
+    }
+
+    .onkontrol-table .main-row:hover {
+        background-color: #fafafa;
+    }
+
+    .onkontrol-table .action-row td {
+        background: transparent;
+    }
+
+    .action-panel {
+        padding: .5rem 0 1.25rem 0;
+    }
+
+    .action-box {
+        background: #f8f9fa;
+        border: 1px solid #e9ecef;
+        border-radius: 1rem;
+        padding: 1rem;
+        height: 100%;
+    }
+
+    .action-title {
+        font-weight: 600;
+        margin-bottom: .75rem;
+    }
+
+    .action-box textarea {
+        resize: vertical;
+    }
+</style>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        const input = document.getElementById('searchInput');
+        const rows = document.querySelectorAll('#submissionTable tbody .main-row');
+
+        if (!input) return;
+
+        input.addEventListener('input', function () {
+            const q = input.value.toLowerCase().trim();
+
+            rows.forEach(row => {
+                const title = row.dataset.title || '';
+                const author = row.dataset.author || '';
+                const match = title.includes(q) || author.includes(q);
+
+                row.style.display = match ? '' : 'none';
+
+                const nextRow = row.nextElementSibling;
+                if (nextRow && nextRow.classList.contains('action-row')) {
+                    nextRow.style.display = match ? '' : 'none';
+                }
+            });
+        });
+    });
+</script>

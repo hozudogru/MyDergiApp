@@ -1,0 +1,50 @@
+@model IEnumerable<MyDergiApp.Models.Issue>
+
+@{
+    ViewData["Title"] = "Yayınlanan Sayılar";
+}
+
+<div class="container py-5">
+    <h1 class="fw-bold mb-4">Yayınlanan Sayılar</h1>
+
+    @if (Model.Any())
+    {
+        <div class="row g-4">
+            @foreach (var issue in Model)
+            {
+                <div class="col-md-6 col-lg-4">
+                    <div class="card border-0 shadow-sm h-100">
+                        <div class="card-body">
+                            <h5 class="fw-bold">
+                                @issue.Year - Cilt @issue.Volume, Sayı @issue.Number
+                            </h5>
+
+                            @if (!string.IsNullOrWhiteSpace(issue.Title))
+                            {
+                                <p class="text-muted">@issue.Title</p>
+                            }
+
+                            <p class="mb-3">
+                                <span class="badge bg-primary">
+                                    @(issue.Articles?.Count ?? 0) makale
+                                </span>
+                            </p>
+
+                            <a asp-action="Details"
+                               asp-route-id="@issue.Id"
+                               class="btn btn-outline-primary">
+                                Sayıyı Gör
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            }
+        </div>
+    }
+    else
+    {
+        <div class="alert alert-info">
+            Henüz yayınlanmış sayı bulunmamaktadır.
+        </div>
+    }
+</div>

@@ -1,0 +1,115 @@
+﻿@model IEnumerable<MyDergiApp.Models.Submission>
+@using MyDergiApp.Models
+
+@{
+    ViewData["Title"] = "Makalelerim";
+}
+
+<div class="card border-0 shadow-sm">
+    <div class="card-header bg-white border-0 py-3 d-flex justify-content-between align-items-center">
+        <h4 class="mb-0 fw-bold">Makalelerim</h4>
+
+        <a asp-controller="Submission" asp-action="YeniMakale" class="btn btn-primary">
+            Yeni Makale
+        </a>
+    </div>
+
+    <div class="card-body">
+        @if (!Model.Any())
+        {
+            <div class="alert alert-info rounded-4 border-0 shadow-sm mb-0">
+                Henüz gönderilmiş makaleniz bulunmuyor.
+            </div>
+        }
+        else
+        {
+            <div class="table-responsive">
+                <table class="table table-hover align-middle">
+                    <thead>
+                        <tr>
+                            <th>#</th>
+                            <th>Başlık</th>
+                            <th>Durum</th>
+                            <th>Oluşturulma</th>
+                            <th>Güncellenme</th>
+                            <th class="text-end">İşlem</th>
+                        </tr>
+                    </thead>
+
+                    <tbody>
+                        @foreach (var item in Model)
+                        {
+                            <tr>
+                                <td>@item.Id</td>
+
+                                <td>
+                                    <div class="fw-semibold">@item.Title</div>
+
+                                    @if (!string.IsNullOrWhiteSpace(item.Subtitle))
+                                    {
+                                        <div class="small text-muted">@item.Subtitle</div>
+                                    }
+                                </td>
+
+                                <td>
+                                    @if (item.Status == SubmissionStatus.RevizyonIstendi)
+                                    {
+                                        <span class="badge bg-warning text-dark">Revizyon İstendi</span>
+                                    }
+                                    else if (item.Status == SubmissionStatus.RevizyonYuklendi)
+                                    {
+                                        <span class="badge bg-info text-dark">Revizyon Yüklendi</span>
+                                    }
+                                    else if (item.Status == SubmissionStatus.KabulEdildi)
+                                    {
+                                        <span class="badge bg-success">Kabul Edildi</span>
+                                    }
+                                    else if (item.Status == SubmissionStatus.Reddedildi)
+                                    {
+                                        <span class="badge bg-danger">Reddedildi</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="badge @StatusDisplayHelper.GetSubmissionStatusBadgeClass(item.Status)">
+                                            @StatusDisplayHelper.GetSubmissionStatusText(item.Status)
+                                        </span>
+                                    }
+                                </td>
+
+                                <td>
+                                    @item.CreatedAt.ToLocalTime().ToString("dd.MM.yyyy HH:mm")
+                                </td>
+
+                                <td>
+                                    @(item.UpdatedAt.HasValue
+                                        ? item.UpdatedAt.Value.ToLocalTime().ToString("dd.MM.yyyy HH:mm")
+                                        : "-")
+                                </td>
+
+                                <td class="text-end">
+                                    <a asp-controller="Submission"
+                                       asp-action="Detail"
+                                       asp-route-id="@item.Id"
+                                       asp-route-viewMode="author"
+                                       class="btn btn-sm btn-outline-primary">
+                                        Görüntüle
+                                    </a>
+
+                                    @if (item.Status == SubmissionStatus.RevizyonIstendi)
+                                    {
+                                        <a asp-controller="Submission"
+                                           asp-action="UploadRevision"
+                                           asp-route-id="@item.Id"
+                                           class="btn btn-sm btn-warning">
+                                            Revizyon Yükle
+                                        </a>
+                                    }
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+    </div>
+</div>

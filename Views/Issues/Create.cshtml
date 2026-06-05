@@ -1,0 +1,62 @@
+@model MyDergiApp.Models.Issue
+
+@{
+    ViewData["Title"] = "Yeni Sayı Oluştur";
+}
+
+<div class="card border-0 shadow-sm">
+    <div class="card-header bg-white border-0 py-3">
+        <h3 class="mb-0 fw-bold">Yeni Sayı Oluştur</h3>
+    </div>
+
+    <div class="card-body">
+        <form asp-action="Create" method="post">
+            @Html.AntiForgeryToken()
+
+            <div asp-validation-summary="ModelOnly" class="text-danger mb-3"></div>
+
+            <div class="row g-3">
+                <div class="col-md-3">
+                    <label asp-for="Year" class="form-label fw-semibold">Yıl</label>
+                    <input asp-for="Year" class="form-control" />
+                    <span asp-validation-for="Year" class="text-danger"></span>
+                </div>
+
+                <div class="col-md-3">
+                    <label asp-for="Volume" class="form-label fw-semibold">Cilt</label>
+                    <input asp-for="Volume" class="form-control" />
+                    <span asp-validation-for="Volume" class="text-danger"></span>
+                </div>
+
+                <div class="col-md-3">
+                    <label asp-for="Number" class="form-label fw-semibold">Sayı</label>
+                    <input asp-for="Number" class="form-control" />
+                    <span asp-validation-for="Number" class="text-danger"></span>
+                </div>
+
+                <div class="col-md-3">
+                    <label asp-for="Title" class="form-label fw-semibold">Başlık</label>
+                    <input asp-for="Title" class="form-control" />
+                    <span asp-validation-for="Title" class="text-danger"></span>
+                </div>
+            </div>
+
+            <div class="form-check form-switch my-4">
+                <input asp-for="IsPublished" class="form-check-input" />
+                <label asp-for="IsPublished" class="form-check-label">Yayında</label>
+            </div>
+
+            <button type="submit" class="btn btn-primary">
+                Kaydet
+            </button>
+
+            <a asp-action="Index" class="btn btn-secondary">
+                Geri Dön
+            </a>
+        </form>
+    </div>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

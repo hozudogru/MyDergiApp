@@ -1,0 +1,75 @@
+﻿@model MyDergiApp.ViewModels.UploadRevisionViewModel
+
+@{
+    ViewData["Title"] = "Revizyon Yükle";
+}
+
+<div class="container mt-4">
+    <div class="card shadow-sm border-0">
+        <div class="card-header bg-warning text-dark">
+            <h5 class="mb-0">Revizyon Dosyası Yükle</h5>
+        </div>
+
+        <div class="card-body">
+            <div class="alert alert-info">
+                <strong>Makale:</strong> @Model.SubmissionTitle
+                <br />
+                Editör tarafından revizyon istenmiştir. Lütfen güncellenmiş makale dosyanızı yükleyiniz.
+            </div>
+
+            <form asp-action="UploadRevision"
+                  asp-controller="Submission"
+                  method="post"
+                  enctype="multipart/form-data">
+
+                @Html.AntiForgeryToken()
+
+                <input type="hidden" asp-for="SubmissionId" />
+
+                <div class="mb-3">
+                    <label asp-for="RevisionFile" class="form-label fw-bold">
+                        Revizyon Dosyası
+                    </label>
+
+                    <input asp-for="RevisionFile"
+                           type="file"
+                           class="form-control"
+                           accept=".pdf,.doc,.docx,.jpeg,.png" />
+
+                    <span asp-validation-for="RevisionFile" class="text-danger"></span>
+
+                    <small class="text-muted">
+                        PDF, DOC, DOCX, JPEG yada PNG formatında dosya yükleyebilirsiniz.
+                    </small>
+                </div>
+
+                <div class="mb-3">
+                    <label asp-for="Note" class="form-label fw-bold">
+                        Yazar Notu
+                    </label>
+
+                    <textarea asp-for="Note"
+                              class="form-control"
+                              rows="4"
+                              placeholder="Editöre revizyonla ilgili kısa bir açıklama yazabilirsiniz."></textarea>
+                </div>
+
+                <div class="d-flex justify-content-between">
+                    <a asp-action="Makalelerim"
+                       asp-controller="Submission"
+                       class="btn btn-secondary">
+                        Geri Dön
+                    </a>
+
+                    <button type="submit" class="btn btn-success">
+                        Revizyonu Yükle
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

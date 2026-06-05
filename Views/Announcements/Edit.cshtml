@@ -1,25 +1,26 @@
-﻿@model MyDergiApp.Models.Announcement
+@model MyDergiApp.Models.Announcement
 @{
     ViewData["Title"] = "Duyuru Düzenle";
 }
 
 <h2 class="mb-3">Duyuru Düzenle</h2>
 
-<div class="card shadow-sm">
+<div class="card shadow-sm border-0">
     <div class="card-body">
-        <form asp-action="Edit" method="post">
+        <form asp-action="Edit" asp-route-id="@Model.Id" method="post">
             @Html.AntiForgeryToken()
+            <div asp-validation-summary="ModelOnly" class="text-danger mb-3"></div>
             <input asp-for="Id" type="hidden" />
 
             <div class="mb-3">
                 <label asp-for="Title" class="form-label"></label>
-                <input asp-for="Title" class="form-control" />
+                <input asp-for="Title" class="form-control" maxlength="200" />
                 <span asp-validation-for="Title" class="text-danger"></span>
             </div>
 
             <div class="mb-3">
                 <label asp-for="Content" class="form-label"></label>
-                <textarea asp-for="Content" class="form-control" rows="6"></textarea>
+                <textarea asp-for="Content" class="form-control" rows="8"></textarea>
                 <span asp-validation-for="Content" class="text-danger"></span>
             </div>
 
@@ -31,6 +32,7 @@
             <div class="form-check mb-3">
                 <input asp-for="ShowAsPopup" class="form-check-input" />
                 <label asp-for="ShowAsPopup" class="form-check-label"></label>
+                <div class="form-text">Popup seçilirse duyuru aktif yapılır ve diğer popup duyurular kapatılır.</div>
             </div>
 
             <button type="submit" class="btn btn-primary">Güncelle</button>

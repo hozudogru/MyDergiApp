@@ -17,7 +17,7 @@
             <tr>
                 <td>@item.Title</td>
                 <td>@item.CreatedAt.ToString("dd.MM.yyyy")</td>
-                <td>@item.Status</td>
+                <td>@StatusDisplayHelper.GetSubmissionStatusText(item.Status)</td>
             </tr>
         }
     </tbody>

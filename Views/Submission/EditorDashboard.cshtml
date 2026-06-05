@@ -1,0 +1,628 @@
+﻿@model IEnumerable<MyDergiApp.ViewModels.Submissions.EditorSubmissionListItemViewModel>
+
+@{
+    ViewData["Title"] = "Editör Paneli";
+
+    string activeTab = (ViewBag.ActiveTab as string) ?? "active";
+
+    int activeCount = ViewBag.ActiveCount ?? 0;
+    int unassignedCount = ViewBag.UnassignedCount ?? 0;
+    int revisionWaitingCount = ViewBag.RevisionWaitingCount ?? 0;
+    int archiveCount = ViewBag.ArchiveCount ?? 0;
+    int allCount = ViewBag.AllCount ?? 0;
+}
+
+<div class="editor-shell">
+    <div class="editor-header mb-4">
+        <div class="d-flex justify-content-between align-items-start mb-4">
+            <div>
+                <h1 class="fw-bold mb-1">Editör Paneli</h1>
+                <p class="text-muted mb-0">
+                    Size atanmış gönderileri, revizyonları ve karar verilen makaleleri yönetin.
+                </p>
+            </div>
+        </div>
+
+        <div class="editor-tabs">
+            <a asp-controller="Submission"
+               asp-action="EditorDashboard"
+               asp-route-tab="active"
+               class="editor-tab @(activeTab == "active" ? "active" : "")">
+                Aktif İşler
+                <span class="count">@activeCount</span>
+            </a>
+
+            <a asp-controller="Submission"
+               asp-action="EditorDashboard"
+               asp-route-tab="unassigned"
+               class="editor-tab @(activeTab == "unassigned" ? "active" : "")">
+                Hakem Ataması Bekleyen
+                <span class="count">@unassignedCount</span>
+            </a>
+
+            <a asp-controller="Submission"
+               asp-action="EditorDashboard"
+               asp-route-tab="revision"
+               class="editor-tab @(activeTab == "revision" ? "active" : "")">
+                Yazardan Revizyon Bekleyen
+                <span class="count">@revisionWaitingCount</span>
+            </a>
+
+            <a asp-controller="Submission"
+               asp-action="EditorDashboard"
+               asp-route-tab="archive"
+               class="editor-tab @(activeTab == "archive" ? "active" : "")">
+                Arşiv / Karar Verilenler
+                <span class="count">@archiveCount</span>
+            </a>
+
+            <a asp-controller="Submission"
+               asp-action="EditorDashboard"
+               asp-route-tab="all"
+               class="editor-tab @(activeTab == "all" ? "active" : "")">
+                Tümü
+                <span class="count">@allCount</span>
+            </a>
+        </div>
+    </div>
+
+    <div class="editor-card">
+        <div class="editor-card-header">
+            <div>
+                <h3 class="mb-1 fw-bold">
+                    @if (activeTab == "unassigned")
+                    {
+                        <text>Hakem Ataması Bekleyen Gönderiler</text>
+                    }
+                    else if (activeTab == "revision")
+                    {
+                        <text>Yazardan Revizyon Bekleyen Gönderiler</text>
+                    }
+                    else if (activeTab == "archive")
+                    {
+                        <text>Arşiv / Karar Verilen Gönderiler</text>
+                    }
+                    else if (activeTab == "all")
+                    {
+                        <text>Tüm Gönderiler</text>
+                    }
+                    else
+                    {
+                        <text>Aktif İşler</text>
+                    }
+                </h3>
+
+                <div class="text-muted small">
+                    Bu sekmede @Model.Count() kayıt listeleniyor.
+                </div>
+            </div>
+
+            <div class="editor-tools">
+                <input type="text" id="searchInput" class="form-control" placeholder="Başlık veya yazar ara..." />
+            </div>
+        </div>
+
+        @if (!Model.Any())
+        {
+            <div class="empty-state">
+                <div class="empty-icon">📄</div>
+                <h5 class="fw-bold mb-2">Bu sekmede gönderi bulunmuyor</h5>
+                <p class="text-muted mb-0">
+                    İlgili süreçte size atanmış makale bulunmamaktadır.
+                </p>
+            </div>
+        }
+        else
+        {
+            <div class="assignment-list" id="assignmentList">
+                @foreach (var item in Model)
+                {
+                    var isArchive = item.RawStatus == SubmissionStatus.KabulEdildi ||
+                                    item.RawStatus == SubmissionStatus.Reddedildi ||
+                                    item.RawStatus == SubmissionStatus.GeriCekildi;
+
+                    var isRevisionWaiting = item.RawStatus == SubmissionStatus.RevizyonIstendi;
+
+                    <div class="assignment-item"
+                         data-title="@($"{item.Title} {item.Subtitle}".ToLowerInvariant())"
+                         data-author="@($"{item.CorrespondingAuthorName} {item.CorrespondingAuthorEmail}".ToLowerInvariant())">
+
+                        <div class="assignment-meta">
+                            <div class="submission-no">#@item.Id</div>
+
+                            <div class="round-pill">
+                                @item.CurrentReviewRound. Tur
+                            </div>
+                        </div>
+
+                        <div class="assignment-body">
+                            <div class="author-line">
+                                @(string.IsNullOrWhiteSpace(item.CorrespondingAuthorName) ? "Yazar bilgisi yok" : item.CorrespondingAuthorName)
+                            </div>
+
+                            @if (!string.IsNullOrWhiteSpace(item.CorrespondingAuthorEmail))
+                            {
+                                <div class="author-email">
+                                    @item.CorrespondingAuthorEmail
+                                </div>
+                            }
+
+                            <div class="title-line">
+                                @item.Title
+                            </div>
+
+                            @if (!string.IsNullOrWhiteSpace(item.Subtitle))
+                            {
+                                <div class="subtitle-line">
+                                    @item.Subtitle
+                                </div>
+                            }
+
+                            <div class="badge-line">
+                                <span class="badge rounded-pill @StatusDisplayHelper.GetSubmissionStatusBadgeClass(item.RawStatus)">
+                                    @StatusDisplayHelper.GetSubmissionStatusText(item.RawStatus)
+                                </span>
+
+                                <span class="badge rounded-pill bg-light text-dark border">
+                                    Dosya: @item.FileCount
+                                </span>
+
+                                <span class="badge rounded-pill bg-light text-dark border">
+                                    Yazar: @item.AuthorCount
+                                </span>
+
+                                @if (item.AssignedReviewerCount == 0)
+                                {
+                                    <span class="badge rounded-pill bg-danger-subtle text-danger-emphasis border">
+                                        Hakem: 0
+                                    </span>
+                                }
+                                else if (item.AssignedReviewerCount == 1)
+                                {
+                                    <span class="badge rounded-pill bg-warning-subtle text-warning-emphasis border">
+                                        Hakem: 1
+                                    </span>
+                                }
+                                else
+                                {
+                                    <span class="badge rounded-pill bg-success-subtle text-success-emphasis border">
+                                        Hakem: @item.AssignedReviewerCount
+                                    </span>
+                                }
+
+                                @if (item.AssignedReviewerCount == 0)
+                                {
+                                    <span class="badge rounded-pill bg-secondary-subtle text-dark border">
+                                        Rapor: 0/0
+                                    </span>
+                                }
+                                else if (item.CompletedReviewerCount == 0)
+                                {
+                                    <span class="badge rounded-pill bg-secondary-subtle text-dark border">
+                                        Rapor: 0/@item.AssignedReviewerCount
+                                    </span>
+                                }
+                                else if (item.CompletedReviewerCount < item.AssignedReviewerCount)
+                                {
+                                    <span class="badge rounded-pill bg-warning-subtle text-warning-emphasis border">
+                                        Rapor: @item.CompletedReviewerCount/@item.AssignedReviewerCount
+                                    </span>
+                                }
+                                else
+                                {
+                                    <span class="badge rounded-pill bg-success-subtle text-success-emphasis border">
+                                        Rapor: @item.CompletedReviewerCount/@item.AssignedReviewerCount tamamlandı
+                                    </span>
+                                }
+                            </div>
+
+                            <div class="status-line mt-2">
+                                <span class="small text-muted">
+                                    Oluşturulma: @item.CreatedAt.ToLocalTime().ToString("dd.MM.yyyy HH:mm")
+                                </span>
+                            </div>
+                        </div>
+
+                        <div class="assignment-actions">
+                            @if (isArchive)
+                            {
+                                <a asp-controller="Submission"
+                                   asp-action="EditorDecision"
+                                   asp-route-id="@item.Id"
+                                   class="btn btn-outline-secondary px-4">
+                                    Kararı Gör
+                                </a>
+                            }
+                            else if (isRevisionWaiting)
+                            {
+                                <a asp-controller="Submission"
+                                   asp-action="EditorDecision"
+                                   asp-route-id="@item.Id"
+                                   class="btn btn-outline-warning px-4">
+                                    Süreci Gör
+                                </a>
+                            }
+                            else
+                            {
+                                <a asp-controller="Submission"
+                                   asp-action="EditorDecision"
+                                   asp-route-id="@item.Id"
+                                   class="btn btn-warning px-4">
+                                    Değerlendir
+                                </a>
+                            }
+
+                            <a asp-controller="Submission"
+                               asp-action="Detail"
+                               asp-route-id="@item.Id"
+                               class="btn btn-outline-primary px-4">
+                                Görüntüle
+                            </a>
+
+                            <div class="dropdown">
+                                <button class="btn btn-sm btn-outline-secondary px-3 dropdown-toggle"
+                                        type="button"
+                                        data-bs-toggle="dropdown"
+                                        aria-expanded="false">
+                                </button>
+
+                                <ul class="dropdown-menu dropdown-menu-end shadow-sm">
+                                    <li>
+                                        <a class="dropdown-item"
+                                           asp-controller="Submission"
+                                           asp-action="EditorDecision"
+                                           asp-route-id="@item.Id">
+                                            Editör Karar / Süreç Ekranı
+                                        </a>
+                                    </li>
+
+                                    <li>
+                                        <a class="dropdown-item"
+                                           asp-controller="Submission"
+                                           asp-action="Detail"
+                                           asp-route-id="@item.Id">
+                                            Makale Detayı
+                                        </a>
+                                    </li>
+
+                                    @if (!isArchive)
+                                    {
+                                        <li>
+                                            <a class="dropdown-item"
+                                               asp-controller="Submission"
+                                               asp-action="EditorDecision"
+                                               asp-route-id="@item.Id">
+                                                Hakem Ata / Süreci Yönet
+                                            </a>
+                                        </li>
+                                    }
+
+                                    <li><hr class="dropdown-divider" /></li>
+
+                                    <li>
+                                        <a class="dropdown-item"
+                                           asp-controller="Submission"
+                                           asp-action="BanaYonlendirilenMakaleler">
+                                            Bana Yönlendirilenler
+                                        </a>
+                                    </li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                }
+            </div>
+        }
+    </div>
+</div>
+
+<style>
+    .editor-shell {
+        max-width: 1480px;
+        margin: 0 auto;
+        padding: 0 .5rem;
+    }
+
+    .editor-header {
+        margin-bottom: 1.75rem;
+    }
+
+    .editor-tabs {
+        display: flex;
+        flex-wrap: wrap;
+        gap: .75rem;
+        align-items: center;
+    }
+
+    .editor-tab {
+        display: inline-flex;
+        align-items: center;
+        gap: .6rem;
+        padding: .85rem 1rem;
+        border-radius: 999px;
+        text-decoration: none;
+        background: #fff;
+        border: 1px solid #e5e7eb;
+        color: #374151;
+        font-weight: 700;
+        box-shadow: 0 2px 6px rgba(0,0,0,.03);
+        transition: all .2s ease;
+    }
+
+        .editor-tab:hover {
+            color: #0d6efd;
+            border-color: #0d6efd;
+            text-decoration: none;
+        }
+
+        .editor-tab .count {
+            background: #f3f4f6;
+            color: #111827;
+            border-radius: 999px;
+            padding: .15rem .55rem;
+            font-size: .85rem;
+            min-width: 28px;
+            text-align: center;
+        }
+
+        .editor-tab.active {
+            background: #0d6efd;
+            color: #fff;
+            border-color: #0d6efd;
+        }
+
+            .editor-tab.active .count {
+                background: rgba(255,255,255,.22);
+                color: #fff;
+            }
+
+    .editor-card {
+        background: #fff;
+        border: 1px solid #e6e6e6;
+        border-radius: 1rem;
+        padding: 1.5rem 1.75rem;
+        box-shadow: 0 2px 10px rgba(0, 0, 0, .04);
+    }
+
+    .editor-card-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 1.5rem;
+        gap: 1rem;
+        flex-wrap: wrap;
+    }
+
+        .editor-card-header h3 {
+            font-size: 1.2rem;
+        }
+
+    .editor-tools {
+        min-width: 300px;
+    }
+
+        .editor-tools .form-control {
+            border-radius: .8rem;
+            min-height: 44px;
+        }
+
+    .empty-state {
+        text-align: center;
+        padding: 3rem 1rem;
+        border: 1px dashed #d1d5db;
+        border-radius: 1rem;
+        background: #f9fafb;
+    }
+
+    .empty-icon {
+        font-size: 2.2rem;
+        margin-bottom: .75rem;
+    }
+
+    .assignment-item {
+        display: grid;
+        grid-template-columns: 86px minmax(0, 1fr) 330px;
+        gap: 1rem;
+        padding: 1.15rem 0;
+        border-top: 1px solid #ececec;
+        align-items: center;
+    }
+
+        .assignment-item:first-child {
+            border-top: 0;
+            padding-top: 0;
+        }
+
+    .submission-no {
+        font-size: 1.08rem;
+        font-weight: 800;
+        color: #495057;
+        margin-bottom: .5rem;
+    }
+
+    .round-pill {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 999px;
+        background: #f3f4f6;
+        border: 1px solid #e5e7eb;
+        padding: .2rem .55rem;
+        font-size: .78rem;
+        font-weight: 700;
+        color: #374151;
+    }
+
+    .assignment-body {
+        min-width: 0;
+    }
+
+    .author-line {
+        font-size: 1rem;
+        font-weight: 800;
+        color: #1d2a39;
+        margin-bottom: .1rem;
+    }
+
+    .author-email {
+        color: #6b7280;
+        font-size: .88rem;
+        margin-bottom: .35rem;
+    }
+
+    .title-line {
+        font-size: 1.18rem;
+        color: #1d2a39;
+        margin-bottom: .25rem;
+        line-height: 1.35;
+        word-break: break-word;
+        font-weight: 600;
+    }
+
+    .subtitle-line {
+        color: #6c757d;
+        margin-bottom: .5rem;
+        line-height: 1.4;
+        word-break: break-word;
+    }
+
+    .badge-line {
+        display: flex;
+        flex-wrap: wrap;
+        gap: .45rem;
+        margin-top: .5rem;
+    }
+
+    .status-line {
+        display: flex;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: .75rem;
+        color: #555;
+        font-size: .95rem;
+    }
+
+    .assignment-actions {
+        display: flex;
+        justify-content: flex-end;
+        gap: .5rem;
+        align-items: center;
+        flex-wrap: nowrap;
+    }
+
+        .assignment-actions .btn {
+            min-width: 116px;
+            min-height: 42px;
+            border-radius: 999px;
+            font-weight: 700;
+        }
+
+        .assignment-actions .btn-outline-primary,
+        .assignment-actions .btn-outline-secondary,
+        .assignment-actions .btn-outline-warning {
+            border-radius: .8rem;
+        }
+
+        .assignment-actions .btn-outline-secondary {
+            min-width: 48px;
+            padding-left: .9rem;
+            padding-right: .9rem;
+        }
+
+        .assignment-actions .dropdown-toggle::after {
+            margin-left: 0;
+        }
+
+        .assignment-actions .dropdown {
+            display: flex;
+            align-items: center;
+        }
+
+        .assignment-actions .dropdown-toggle {
+            min-width: 54px;
+            min-height: 46px;
+            border-radius: .85rem;
+        }
+
+        .assignment-actions .dropdown-menu {
+            min-width: 250px;
+            border-radius: .85rem;
+            border: 1px solid #e5e7eb;
+            padding: .35rem 0;
+        }
+
+        .assignment-actions .dropdown-item {
+            padding: .7rem 1rem;
+            font-weight: 500;
+        }
+
+            .assignment-actions .dropdown-item:hover {
+                background-color: #f8f9fa;
+            }
+
+    @@media (max-width: 1100px) {
+        .assignment-item {
+            grid-template-columns: 1fr;
+            gap: .75rem;
+        }
+
+        .assignment-actions {
+            justify-content: flex-start;
+        }
+
+            .assignment-actions .btn {
+                min-width: auto;
+            }
+    }
+
+    @@media (max-width: 576px) {
+        .editor-card {
+            padding: 1rem;
+        }
+
+        .editor-tabs {
+            gap: .6rem;
+        }
+
+        .editor-tab {
+            width: 100%;
+            justify-content: space-between;
+        }
+
+        .title-line {
+            font-size: 1.05rem;
+        }
+
+        .assignment-actions {
+            flex-direction: column;
+            align-items: stretch;
+        }
+
+            .assignment-actions .btn,
+            .assignment-actions .dropdown,
+            .assignment-actions .dropdown-toggle {
+                width: 100%;
+            }
+    }
+</style>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        const input = document.getElementById('searchInput');
+        const items = document.querySelectorAll('.assignment-item');
+
+        if (!input) return;
+
+        input.addEventListener('input', function () {
+            const q = input.value.toLowerCase().trim();
+
+            items.forEach(item => {
+                const title = item.dataset.title || '';
+                const author = item.dataset.author || '';
+                const match = title.includes(q) || author.includes(q);
+
+                item.style.display = match ? '' : 'none';
+            });
+        });
+    });
+</script>

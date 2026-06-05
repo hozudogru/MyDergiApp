@@ -8,13 +8,21 @@
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css" />
     <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
     <link rel="stylesheet" href="https://cdn.datatables.net/1.13.8/css/dataTables.bootstrap5.min.css" />
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" />
     <link rel="stylesheet" href="~/css/frontpage.css" asp-append-version="true" />
 </head>
 <body>
     @{
         var currentController = ViewContext.RouteData.Values["controller"]?.ToString();
         var currentAction = ViewContext.RouteData.Values["action"]?.ToString();
+        var currentArea = ViewContext.RouteData.Values["area"]?.ToString();
+        var viewMode = Context.Request.Query["viewMode"].ToString();
+
+        bool isAdmin = User.IsInRole("Admin");
+        bool isChiefEditor = User.IsInRole("ChiefEditor");
+        bool isEditor = User.IsInRole("Editor");
+        bool isAuthor = User.IsInRole("Author");
+        bool isReviewer = User.IsInRole("Reviewer");
 
         string ActiveClass(string controller, string? action = null)
         {
@@ -22,84 +30,256 @@
             var actionMatch = action == null || string.Equals(currentAction, action, StringComparison.OrdinalIgnoreCase);
             return controllerMatch && actionMatch ? "active" : "";
         }
+
+        bool IsSubmissionAction(params string[] actions)
+        {
+            return string.Equals(currentController, "Submission", StringComparison.OrdinalIgnoreCase)
+                   && actions.Any(a => string.Equals(currentAction, a, StringComparison.OrdinalIgnoreCase));
+        }
+
+        string currentSection;
+
+        if (viewMode == "author" ||
+            IsSubmissionAction("Makalelerim", "YeniMakale", "UploadRevision"))
+        {
+            currentSection = "Author";
+        }
+        else if (IsSubmissionAction("MyReviews") ||
+                 string.Equals(currentController, "Reviewer", StringComparison.OrdinalIgnoreCase))
+        {
+            currentSection = "Reviewer";
+        }
+        else if (IsSubmissionAction("EditorDashboard", "BanaYonlendirilenMakaleler", "EditorDecision", "AssignReviewer", "Detail"))
+        {
+            currentSection = "Editor";
+        }
+        else if (IsSubmissionAction("OnKontrolListesi"))
+        {
+            currentSection = "ChiefEditor";
+        }
+        else if (isAdmin &&
+    (string.Equals(currentArea, "Admin", StringComparison.OrdinalIgnoreCase) ||
+     string.Equals(currentController, "Admin", StringComparison.OrdinalIgnoreCase) ||
+     string.Equals(currentController, "Journal", StringComparison.OrdinalIgnoreCase) ||
+     string.Equals(currentController, "Journals", StringComparison.OrdinalIgnoreCase) ||
+     string.Equals(currentController, "UserManagement", StringComparison.OrdinalIgnoreCase) ||
+     string.Equals(currentController, "Announcements", StringComparison.OrdinalIgnoreCase) ||
+     string.Equals(currentController, "HomePageSettings", StringComparison.OrdinalIgnoreCase) ||
+     string.Equals(currentController, "JournalIndexes", StringComparison.OrdinalIgnoreCase) ||
+     string.Equals(currentController, "Issues", StringComparison.OrdinalIgnoreCase)))
+        {
+            currentSection = "Admin";
+        }
+        else if (isEditor)
+        {
+            currentSection = "Editor";
+        }
+        else if (isChiefEditor)
+        {
+            currentSection = "ChiefEditor";
+        }
+        else if (isReviewer)
+        {
+            currentSection = "Reviewer";
+        }
+        else if (isAuthor)
+        {
+            currentSection = "Author";
+        }
+        else if (isAdmin)
+        {
+            currentSection = "Admin";
+        }
+        else
+        {
+            currentSection = "Home";
+        }
     }
 
     @if (User.Identity?.IsAuthenticated ?? false)
     {
         <div class="d-flex min-vh-100">
-            <aside class="bg-dark text-white p-3" style="width:260px;">
+            <aside class="bg-dark text-white p-3" style="width:280px;">
                 <h2 class="fw-bold mb-1">MyDergiApp</h2>
                 <div class="text-white-50 mb-4">Journal Management Panel</div>
 
                 <nav class="nav flex-column">
-                    <a asp-controller="Home" asp-action="Index"
-                           class="nav-link text-white rounded mb-1 @ActiveClass("Home", "Index")">
-                        Ana Sayfa
-                    </a>
 
-                    @if (User.IsInRole("Admin"))
+                    @if (currentSection == "Admin" && isAdmin)
                     {
+                        <a asp-controller="Admin" asp-action="Index"
+                           class="nav-link text-white rounded mb-1 @ActiveClass("Admin", "Index")">
+                            Ana Sayfa
+                        </a>
+
                         <div class="text-uppercase small text-white-50 mt-3 mb-2">Yönetim</div>
 
                         <a asp-controller="Admin" asp-action="Index"
-                               class="nav-link text-white rounded mb-1 @ActiveClass("Admin", "Index")">
+                           class="nav-link text-white rounded mb-1 @ActiveClass("Admin", "Index")">
                             Dashboard
                         </a>
 
                         <a asp-controller="Journal" asp-action="Index"
-                               class="nav-link text-white rounded mb-1 @ActiveClass("Journal", "Index")">
+                           class="nav-link text-white rounded mb-1 @ActiveClass("Journal", "Index")">
                             Dergiler
                         </a>
 
                         <a asp-area="Admin" asp-controller="SubmissionManagement" asp-action="Index"
-                               class="nav-link text-white rounded mb-1 @ActiveClass("SubmissionManagement", "Index")">
+                           class="nav-link text-white rounded mb-1 @ActiveClass("SubmissionManagement", "Index")">
                             Tüm Makaleler
                         </a>
 
                         <a href="/UserManagement"
-                               class="nav-link text-white rounded mb-1 @ActiveClass("UserManagement", "Index")">
+                           class="nav-link text-white rounded mb-1 @ActiveClass("UserManagement", "Index")">
                             Kullanıcılar
                         </a>
+
                         <a asp-controller="Announcements" asp-action="Index"
-                               class="nav-link text-white rounded mb-1 @ActiveClass("Announcements", "Index")">
+                           class="nav-link text-white rounded mb-1 @ActiveClass("Announcements", "Index")">
                             Duyurular
                         </a>
-                    }
-                   
-                    @if (User.IsInRole("Editor"))
-                    {
-                        <div class="text-uppercase small text-white-50 mt-3 mb-2">Editör</div>
+                        <a asp-controller="HomePageSettings" asp-action="Index"
+                           class="nav-link text-white rounded mb-1">
+                            Ana Sayfa Ayarları
+                        </a>
 
-                        <a asp-controller="Submission" asp-action="AdminList"
-                               class="nav-link text-white rounded mb-1 @ActiveClass("Submission", "AdminList")">
-                            Tüm Makaleler
+                        <a asp-controller="JournalIndexes" asp-action="Index"
+                           class="nav-link text-white rounded mb-1">
+                            Dergi İndeksleri
+                        </a>
+                        <a asp-controller="Issues"
+                           asp-action="Index"
+                           class="nav-link text-white rounded mb-1 @ActiveClass("Issues", "Index")">
+                            Sayılar
                         </a>
                     }
 
-                    @if (User.IsInRole("Reviewer"))
+                    else if (currentSection == "ChiefEditor" && isChiefEditor)
                     {
+                        <a asp-controller="Submission" asp-action="OnKontrolListesi"
+                           class="nav-link text-white rounded mb-1 @ActiveClass("Submission", "OnKontrolListesi")">
+                            Ana Sayfa
+                        </a>
+
+                        <div class="text-uppercase small text-white-50 mt-3 mb-2">Baş Editör</div>
+
+                        <a asp-controller="Submission" asp-action="OnKontrolListesi"
+                           class="nav-link text-white rounded mb-1 @ActiveClass("Submission", "OnKontrolListesi")">
+                            Ön Kontrol Bekleyenler
+                        </a>
+                    }
+
+                    else if (currentSection == "Editor" && isEditor)
+                    {
+                        <a asp-controller="Submission" asp-action="EditorDashboard"
+                           class="nav-link text-white rounded mb-1 @ActiveClass("Submission", "EditorDashboard")">
+                            Ana Sayfa
+                        </a>
+
+                        <div class="text-uppercase small text-white-50 mt-3 mb-2">Alan Editörü</div>
+
+                        <a asp-controller="Submission" asp-action="EditorDashboard"
+                           class="nav-link text-white rounded mb-1 @ActiveClass("Submission", "EditorDashboard")">
+                            Editör Paneli
+                        </a>
+
+                        
+                    }
+
+                    else if (currentSection == "Reviewer" && isReviewer)
+                    {
+                        <a asp-controller="Submission" asp-action="MyReviews"
+                           class="nav-link text-white rounded mb-1 @ActiveClass("Submission", "MyReviews")">
+                            Ana Sayfa
+                        </a>
+
                         <div class="text-uppercase small text-white-50 mt-3 mb-2">Hakem</div>
 
-                        <a asp-controller="Reviewer" asp-action="Index"
-                               class="nav-link text-white rounded mb-1 @ActiveClass("Reviewer", "Index")">
+                        <a asp-controller="Submission" asp-action="MyReviews"
+                           class="nav-link text-white rounded mb-1 @ActiveClass("Submission", "MyReviews")">
                             Değerlendirmelerim
                         </a>
                     }
 
-                    @if (User.IsInRole("Author"))
+                    else if (currentSection == "Author" && isAuthor)
                     {
+                        <a asp-controller="Submission" asp-action="Makalelerim"
+                           class="nav-link text-white rounded mb-1 @ActiveClass("Submission", "Makalelerim")">
+                            Ana Sayfa
+                        </a>
+
                         <div class="text-uppercase small text-white-50 mt-3 mb-2">Yazar İşlemleri</div>
 
-                        <a asp-controller="Submission" asp-action="Index"
-                               class="nav-link text-white rounded mb-1 @ActiveClass("Submission", "Index")">
+                        <a asp-controller="Submission" asp-action="Makalelerim"
+                           class="nav-link text-white rounded mb-1 @ActiveClass("Submission", "Makalelerim")">
                             Makalelerim
                         </a>
 
-                        <a asp-controller="Submission" asp-action="Create"
-                               class="nav-link text-white rounded mb-1 @ActiveClass("Submission", "Create")">
+                        <a asp-controller="Submission" asp-action="YeniMakale"
+                           class="nav-link text-white rounded mb-1 @ActiveClass("Submission", "YeniMakale")">
                             Yeni Makale
                         </a>
                     }
+
+                    else
+                    {
+                        <a asp-controller="Home" asp-action="Index"
+                           class="nav-link text-white rounded mb-1 @ActiveClass("Home", "Index")">
+                            Ana Sayfa
+                        </a>
+                    }
+
+                    @if (currentSection != "Admin" &&
+                         (isAdmin || isChiefEditor || isEditor || isReviewer || isAuthor) &&
+                         (isAdmin && currentSection != "Admin" ||
+                          isChiefEditor && currentSection != "ChiefEditor" ||
+                          isEditor && currentSection != "Editor" ||
+                          isReviewer && currentSection != "Reviewer" ||
+                          isAuthor && currentSection != "Author"))
+                    {
+                        <div class="text-uppercase small text-white-50 mt-4 mb-2">Panel Değiştir</div>
+
+                        @if (isAuthor && currentSection != "Author")
+                        {
+                            <a asp-controller="Submission" asp-action="Makalelerim"
+                               class="nav-link text-white-50 rounded mb-1">
+                                Yazar Paneli
+                            </a>
+                        }
+
+                        @if (isReviewer && currentSection != "Reviewer")
+                        {
+                            <a asp-controller="Submission" asp-action="MyReviews"
+                               class="nav-link text-white-50 rounded mb-1">
+                                Hakem Paneli
+                            </a>
+                        }
+
+                        @if (isEditor && currentSection != "Editor")
+                        {
+                            <a asp-controller="Submission" asp-action="EditorDashboard"
+                               class="nav-link text-white-50 rounded mb-1">
+                                Editör Paneli
+                            </a>
+                        }
+
+                        @if (isChiefEditor && currentSection != "ChiefEditor")
+                        {
+                            <a asp-controller="Submission" asp-action="OnKontrolListesi"
+                               class="nav-link text-white-50 rounded mb-1">
+                                Baş Editör Paneli
+                            </a>
+                        }
+
+                        @if (isAdmin && currentSection != "Admin")
+                        {
+                            <a asp-controller="Admin" asp-action="Index"
+                               class="nav-link text-white-50 rounded mb-1">
+                                Admin Paneli
+                            </a>
+                        }
+                    }
+
                 </nav>
             </aside>
 
@@ -126,7 +306,9 @@
                         <div class="alert alert-danger">@TempData["Error"]</div>
                     }
 
-                    @RenderBody()
+                    <main role="main" class="content-area py-4">
+                        @RenderBody()
+                    </main>
                 </main>
             </div>
         </div>
@@ -134,12 +316,45 @@
     else
     {
         <div class="d-flex flex-column min-vh-100">
-            <header class="bg-white border-bottom px-4 py-3 d-flex justify-content-between align-items-center">
-                <h4 class="mb-0">@ViewData["Title"]</h4>
+            <header class="bg-white border-bottom px-4 py-3">
+                <div class="container-fluid d-flex flex-wrap justify-content-between align-items-center gap-3">
+                    <a asp-controller="Home"
+                       asp-action="Index"
+                       class="text-decoration-none text-dark">
+                        <div class="fw-bold fs-4">MyDergiApp</div>
+                        <div class="small text-muted">Journal Management System</div>
+                    </a>
 
-                <div class="d-flex align-items-center gap-2">
-                    <a asp-area="Identity" asp-page="/Account/Login" class="btn btn-outline-primary btn-sm">Giriş</a>
-                    <a asp-area="Identity" asp-page="/Account/Register" class="btn btn-primary btn-sm">Kayıt Ol</a>
+                    <nav class="d-flex flex-wrap align-items-center gap-2">
+                        <a asp-controller="Home"
+                           asp-action="Index"
+                           class="btn btn-outline-secondary btn-sm @ActiveClass("Home", "Index")">
+                            Ana Sayfa
+                        </a>
+
+                        <a asp-controller="Issues"
+                           asp-action="Published"
+                           class="btn btn-outline-secondary btn-sm @ActiveClass("Issues", "Published")">
+                            Yayınlanan Sayılar
+                        </a>
+
+                        <a href="/#announcements"
+                           class="btn btn-outline-secondary btn-sm">
+                            Duyurular
+                        </a>
+
+                        <a asp-area="Identity"
+                           asp-page="/Account/Login"
+                           class="btn btn-outline-primary btn-sm">
+                            Giriş Yap
+                        </a>
+
+                        <a asp-area="Identity"
+                           asp-page="/Account/Register"
+                           class="btn btn-primary btn-sm">
+                            Kayıt Ol
+                        </a>
+                    </nav>
                 </div>
             </header>
 

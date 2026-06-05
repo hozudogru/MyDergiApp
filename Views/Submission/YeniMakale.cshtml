@@ -1,0 +1,571 @@
+﻿@model MyDergiApp.ViewModels.CreateSubmissionViewModel
+
+@{
+    ViewData["Title"] = "Yeni Makale Gönder";
+    if (Model.Authors == null || !Model.Authors.Any())
+    {
+        Model.Authors = new List<MyDergiApp.ViewModels.SubmissionAuthorInputViewModel>
+        {
+            new MyDergiApp.ViewModels.SubmissionAuthorInputViewModel
+            {
+                Role = "Yazar",
+                IsCorrespondingAuthor = true
+            }
+        };
+    }
+}
+
+<div class="card border-0 shadow-sm">
+    <div class="card-header bg-white border-0 py-3">
+        <h3 class="mb-0 fw-bold">Yeni Makale Gönder</h3>
+    </div>
+
+    <div class="card-body">
+        @if (TempData["Success"] != null)
+        {
+            <div class="alert alert-success rounded-4 border-0 shadow-sm">
+                @TempData["Success"]
+            </div>
+        }
+
+        <form asp-action="YeniMakale" method="post" enctype="multipart/form-data" id="submissionWizardForm" novalidate>
+            @Html.AntiForgeryToken()
+
+            <div asp-validation-summary="ModelOnly" class="text-danger mb-3"></div>
+
+            <div class="mb-4">
+                <div class="small text-muted mb-2">Gönderim Süreci</div>
+
+                <div class="wizard-steps">
+                    <div class="wizard-step active" data-step="1">1. Başlangıç</div>
+                    <div class="wizard-step" data-step="2">2. Yazar Bilgileri</div>
+                    <div class="wizard-step" data-step="3">3. Dosya Yükleme</div>
+                    <div class="wizard-step" data-step="4">4. Makale Bilgileri</div>
+                    <div class="wizard-step" data-step="5">5. Onay</div>
+                </div>
+            </div>
+
+            <!-- 1. Başlangıç -->
+            <div class="wizard-panel active" data-step="1">
+                <div class="card border-0 shadow-sm mb-4">
+                    <div class="card-header bg-light border-0 py-3">
+                        <h5 class="mb-0 fw-semibold">Başlangıç</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="fw-semibold mb-3">Gönderim Kontrol Listesi</div>
+
+                        <div class="form-check mb-2">
+                            <input class="form-check-input wizard-check" type="checkbox" id="checkBlindReview" />
+                            <label class="form-check-label" for="checkBlindReview">
+                                Makale dosyasını kör hakemliğe uygun hale getirdim.
+                            </label>
+                        </div>
+
+                        <div class="form-check mb-2">
+                            <input class="form-check-input wizard-check" type="checkbox" id="checkOriginality" />
+                            <label class="form-check-label" for="checkOriginality">
+                                Çalışmanın özgün olduğunu ve başka bir yerde değerlendirmede olmadığını beyan ederim.
+                            </label>
+                        </div>
+
+                        <div class="form-check mb-2">
+                            <input class="form-check-input wizard-check" type="checkbox" id="checkEthics" />
+                            <label class="form-check-label" for="checkEthics">
+                                Etik ve telif yükümlülüklerini kabul ediyorum.
+                            </label>
+                        </div>
+
+                        <hr class="my-4" />
+
+                        <div class="form-check">
+                            <input asp-for="AuthorChecklistAccepted" class="form-check-input" />
+                            <label asp-for="AuthorChecklistAccepted" class="form-check-label"></label>
+                        </div>
+                        <span asp-validation-for="AuthorChecklistAccepted" class="text-danger d-block mt-2"></span>
+                    </div>
+                </div>
+
+                <div class="d-flex justify-content-end">
+                    <button type="button" class="btn btn-primary" onclick="nextStep(1)">İleri</button>
+                </div>
+            </div>
+
+            <!-- 2. Yazar Bilgileri -->
+            <div class="wizard-panel" data-step="2">
+                <div class="card border-0 shadow-sm mb-4">
+                    <div class="card-header bg-light border-0 py-3">
+                        <h5 class="mb-0 fw-semibold">Yazar Bilgileri</h5>
+                    </div>
+                    <div class="card-body">
+                        <div id="authorsContainer">
+                            @for (int i = 0; i < Model.Authors.Count; i++)
+                            {
+                                <div class="author-card border rounded-4 p-3 mb-3">
+                                    <div class="d-flex justify-content-between align-items-center mb-3">
+                                        <h6 class="mb-0">Yazar @(i + 1)</h6>
+                                        <button type="button" class="btn btn-sm btn-outline-danger" onclick="removeAuthor(this)">Sil</button>
+                                    </div>
+
+                                    <div class="row g-3">
+                                        <div class="col-md-6">
+                                            <label asp-for="Authors[i].FullName" class="form-label"></label>
+                                            <input asp-for="Authors[i].FullName" class="form-control" />
+                                            <span asp-validation-for="Authors[i].FullName" class="text-danger"></span>
+                                        </div>
+
+                                        <div class="col-md-6">
+                                            <label asp-for="Authors[i].Email" class="form-label"></label>
+                                            <input asp-for="Authors[i].Email" class="form-control" />
+                                            <span asp-validation-for="Authors[i].Email" class="text-danger"></span>
+                                        </div>
+
+                                        <div class="col-md-6">
+                                            <label asp-for="Authors[i].Institution" class="form-label"></label>
+                                            <input asp-for="Authors[i].Institution" class="form-control" />
+                                        </div>
+
+                                        <div class="col-md-6">
+                                            <label asp-for="Authors[i].Orcid" class="form-label"></label>
+                                            <input asp-for="Authors[i].Orcid" class="form-control" />
+                                        </div>
+
+                                        <div class="col-md-6">
+                                            <label asp-for="Authors[i].Role" class="form-label"></label>
+                                            <input asp-for="Authors[i].Role" class="form-control" />
+                                        </div>
+
+                                        <div class="col-md-6 d-flex align-items-end">
+                                            <div class="form-check">
+                                                <input asp-for="Authors[i].IsCorrespondingAuthor" class="form-check-input" />
+                                                <label asp-for="Authors[i].IsCorrespondingAuthor" class="form-check-label"></label>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            }
+                        </div>
+
+                        <button type="button" class="btn btn-outline-primary" onclick="addAuthor()">
+                            Yazar Ekle
+                        </button>
+                    </div>
+                </div>
+
+                <div class="d-flex justify-content-between">
+                    <button type="button" class="btn btn-secondary" onclick="prevStep(2)">Geri</button>
+                    <button type="button" class="btn btn-primary" onclick="nextStep(2)">İleri</button>
+                </div>
+            </div>
+
+            <!-- 3. Dosya Yükleme -->
+            <div class="wizard-panel" data-step="3">
+                <div class="card border-0 shadow-sm mb-4">
+                    <div class="card-header bg-light border-0 py-3">
+                        <h5 class="mb-0 fw-semibold">Dosya Yükleme</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="mb-4">
+                            <label asp-for="MainManuscriptFile" class="form-label fw-semibold"></label>
+                            <input asp-for="MainManuscriptFile" type="file" class="form-control" />
+                            <span asp-validation-for="MainManuscriptFile" class="text-danger"></span>
+                            <div class="form-text">
+                                Kör hakemliğe uygun ana makale dosyasını yükleyiniz.
+                            </div>
+                        </div>
+
+                        <div class="mb-4">
+                            <label asp-for="CoverLetterFile" class="form-label fw-semibold"></label>
+                            <input asp-for="CoverLetterFile" type="file" class="form-control" />
+                            <span asp-validation-for="CoverLetterFile" class="text-danger"></span>
+                        </div>
+
+                        <div class="mb-4">
+                            <label asp-for="EthicsApprovalFile" class="form-label fw-semibold"></label>
+                            <input asp-for="EthicsApprovalFile" type="file" class="form-control" />
+                            <span asp-validation-for="EthicsApprovalFile" class="text-danger"></span>
+                        </div>
+
+                        <div class="mb-4">
+                            <label asp-for="CopyrightTransferFile" class="form-label fw-semibold"></label>
+                            <input asp-for="CopyrightTransferFile" type="file" class="form-control" />
+                            <span asp-validation-for="CopyrightTransferFile" class="text-danger"></span>
+                        </div>
+
+                        <div class="mb-4">
+                            <label asp-for="SimilarityReportFile" class="form-label fw-semibold"></label>
+                            <input asp-for="SimilarityReportFile" type="file" class="form-control" />
+                            <span asp-validation-for="SimilarityReportFile" class="text-danger"></span>
+                        </div>
+
+                        <div class="mb-3">
+                            <label asp-for="SupplementaryFiles" class="form-label fw-semibold"></label>
+                            <input asp-for="SupplementaryFiles" type="file" multiple class="form-control" />
+                            <span asp-validation-for="SupplementaryFiles" class="text-danger"></span>
+                            <div class="form-text">
+                                Şekil, tablo, veri seti ve diğer ek dosyaları çoklu olarak yükleyebilirsiniz.
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="d-flex justify-content-between">
+                    <button type="button" class="btn btn-secondary" onclick="prevStep(3)">Geri</button>
+                    <button type="button" class="btn btn-primary" onclick="nextStep(3)">İleri</button>
+                </div>
+            </div>
+
+            <!-- 4. Makale Bilgileri -->
+            <div class="wizard-panel" data-step="4">
+                <div class="card border-0 shadow-sm mb-4">
+                    <div class="card-header bg-light border-0 py-3">
+                        <h5 class="mb-0 fw-semibold">Makale Bilgileri</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="row g-3">
+                            <div class="col-md-4">
+                                <label asp-for="Prefix" class="form-label"></label>
+                                <input asp-for="Prefix" class="form-control" />
+                                <span asp-validation-for="Prefix" class="text-danger"></span>
+                            </div>
+
+                            <div class="col-md-8">
+                                <label asp-for="Title" class="form-label"></label>
+                                <input asp-for="Title" class="form-control" />
+                                <span asp-validation-for="Title" class="text-danger"></span>
+                            </div>
+
+                            <div class="col-12">
+                                <label asp-for="Subtitle" class="form-label"></label>
+                                <input asp-for="Subtitle" class="form-control" />
+                                <span asp-validation-for="Subtitle" class="text-danger"></span>
+                            </div>
+
+                            <div class="col-12">
+                                <label asp-for="Abstract" class="form-label"></label>
+                                <textarea asp-for="Abstract" class="form-control" rows="8"></textarea>
+                                <span asp-validation-for="Abstract" class="text-danger"></span>
+                            </div>
+
+                            <div class="col-12">
+                                <label asp-for="Keywords" class="form-label"></label>
+                                <input asp-for="Keywords" class="form-control" placeholder="Anahtar kelimeleri virgülle ayırabilirsiniz" />
+                                <span asp-validation-for="Keywords" class="text-danger"></span>
+                            </div>
+
+                            <div class="col-12">
+                                <label asp-for="ReferencesText" class="form-label"></label>
+                                <textarea asp-for="ReferencesText" class="form-control" rows="7"></textarea>
+                                <span asp-validation-for="ReferencesText" class="text-danger"></span>
+                            </div>
+
+                            <div class="col-12">
+                                <label asp-for="CoverLetter" class="form-label"></label>
+                                <textarea asp-for="CoverLetter" class="form-control" rows="5"></textarea>
+                                <span asp-validation-for="CoverLetter" class="text-danger"></span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="d-flex justify-content-between">
+                    <button type="button" class="btn btn-secondary" onclick="prevStep(4)">Geri</button>
+                    <button type="button" class="btn btn-primary" onclick="fillPreviewAndNext()">İleri</button>
+                </div>
+            </div>
+
+            <!-- 5. Onay -->
+            <div class="wizard-panel" data-step="5">
+                <div class="card border-0 shadow-sm mb-4">
+                    <div class="card-header bg-light border-0 py-3">
+                        <h5 class="mb-0 fw-semibold">Onay</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="mb-4">
+                            <div class="fw-semibold mb-2">Girilen Bilgiler</div>
+
+                            <div class="preview-box mb-3">
+                                <div><strong>Ön Başlık:</strong> <span id="previewPrefix">-</span></div>
+                                <div><strong>Başlık:</strong> <span id="previewTitle">-</span></div>
+                                <div><strong>Alt Başlık:</strong> <span id="previewSubtitle">-</span></div>
+                            </div>
+
+                            <div class="preview-box mb-3">
+                                <div class="fw-semibold mb-2">Yazarlar</div>
+                                <div id="previewAuthors">-</div>
+                            </div>
+
+                            <div class="preview-box mb-3">
+                                <div class="fw-semibold mb-2">Özet</div>
+                                <div id="previewAbstract">-</div>
+                            </div>
+
+                            <div class="preview-box mb-3">
+                                <div><strong>Anahtar Kelimeler:</strong> <span id="previewKeywords">-</span></div>
+                            </div>
+
+                            <div class="preview-box mb-3">
+                                <div class="fw-semibold mb-2">Kaynakça</div>
+                                <div id="previewReferences">-</div>
+                            </div>
+
+                            <div class="preview-box mb-3">
+                                <div class="fw-semibold mb-2">Editöre Not</div>
+                                <div id="previewCoverLetter">-</div>
+                            </div>
+
+                            <div class="preview-box">
+                                <div><strong>Makale Dosyası:</strong> <span id="previewMainFile">Seçilmedi</span></div>
+                                <div><strong>Kapak Yazısı:</strong> <span id="previewCoverLetterFile">Seçilmedi</span></div>
+                                <div><strong>Etik Kurul Belgesi:</strong> <span id="previewEthicsFile">Seçilmedi</span></div>
+                                <div><strong>Telif Devir Formu:</strong> <span id="previewCopyrightFile">Seçilmedi</span></div>
+                                <div><strong>Benzerlik Raporu:</strong> <span id="previewSimilarityFile">Seçilmedi</span></div>
+                                <div><strong>Ek Dosya Sayısı:</strong> <span id="previewSupplementaryCount">0</span></div>
+                            </div>
+                        </div>
+
+                        <div class="alert alert-warning rounded-4 border-0 mb-0">
+                            Gönderimden sonra makaleniz ön kontrole alınacaktır. Lütfen bilgileri son kez kontrol ediniz.
+                        </div>
+                    </div>
+                </div>
+
+                <div class="d-flex justify-content-between">
+                    <button type="button" class="btn btn-secondary" onclick="prevStep(5)">Geri</button>
+                    <button type="submit" class="btn btn-success" id="finalSubmitButton">Gönderimi Tamamla</button>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+
+    <style>
+        .wizard-steps {
+            display: flex;
+            gap: .5rem;
+            flex-wrap: wrap;
+        }
+
+        .wizard-step {
+            background: #6c757d;
+            color: #fff;
+            padding: .45rem .8rem;
+            border-radius: .6rem;
+            font-size: .92rem;
+            font-weight: 600;
+            opacity: .75;
+        }
+
+            .wizard-step.active {
+                background: #0d6efd;
+                opacity: 1;
+            }
+
+        .wizard-panel {
+            display: none;
+        }
+
+            .wizard-panel.active {
+                display: block;
+            }
+
+        .preview-box {
+            background: #f8f9fa;
+            border: 1px solid #e9ecef;
+            border-radius: 1rem;
+            padding: 1rem 1.1rem;
+            white-space: pre-line;
+        }
+
+        .author-card {
+            background: #fff;
+        }
+    </style>
+
+    <script>
+        function showStep(step) {
+            document.querySelectorAll('.wizard-panel').forEach(p => p.classList.remove('active'));
+            document.querySelectorAll('.wizard-step').forEach(s => s.classList.remove('active'));
+
+            const panel = document.querySelector('.wizard-panel[data-step="' + step + '"]');
+            const tab = document.querySelector('.wizard-step[data-step="' + step + '"]');
+
+            if (panel) panel.classList.add('active');
+            if (tab) tab.classList.add('active');
+        }
+
+        function nextStep(currentStep) {
+            if (currentStep === 1) {
+                const accepted = document.getElementById('AuthorChecklistAccepted');
+                if (accepted && !accepted.checked) {
+                    alert('Devam etmek için onay vermelisiniz.');
+                    return;
+                }
+            }
+
+            if (currentStep === 3) {
+                const mainFile = document.getElementById('MainManuscriptFile');
+                if (mainFile && mainFile.files.length === 0) {
+                    alert('Devam etmek için makale dosyasını yüklemelisiniz.');
+                    return;
+                }
+            }
+
+            showStep(currentStep + 1);
+        }
+
+        function prevStep(currentStep) {
+            showStep(currentStep - 1);
+        }
+
+        function fillPreviewAndNext() {
+            const prefix = document.getElementById('Prefix')?.value || '-';
+            const title = document.getElementById('Title')?.value || '-';
+            const subtitle = document.getElementById('Subtitle')?.value || '-';
+            const abstractText = document.getElementById('Abstract')?.value || '-';
+            const keywords = document.getElementById('Keywords')?.value || '-';
+            const references = document.getElementById('ReferencesText')?.value || '-';
+            const coverLetter = document.getElementById('CoverLetter')?.value || '-';
+
+            const mainFile = document.getElementById('MainManuscriptFile');
+            const coverLetterFile = document.getElementById('CoverLetterFile');
+            const ethicsApprovalFile = document.getElementById('EthicsApprovalFile');
+            const copyrightTransferFile = document.getElementById('CopyrightTransferFile');
+            const similarityReportFile = document.getElementById('SimilarityReportFile');
+            const supplementaryFiles = document.getElementById('SupplementaryFiles');
+
+            const authors = [];
+            document.querySelectorAll('#authorsContainer .author-card').forEach((card, index) => {
+                const fullName = card.querySelector(`input[name="Authors[${index}].FullName"]`)?.value || '';
+                const email = card.querySelector(`input[name="Authors[${index}].Email"]`)?.value || '';
+                const institution = card.querySelector(`input[name="Authors[${index}].Institution"]`)?.value || '';
+                const corresponding = card.querySelector(`input[name="Authors[${index}].IsCorrespondingAuthor"]`)?.checked;
+
+                if (fullName || email) {
+                    let text = fullName || '-';
+                    if (email) text += ` (${email})`;
+                    if (institution) text += ` - ${institution}`;
+                    if (corresponding) text += ' [Sorumlu Yazar]';
+                    authors.push(text);
+                }
+            });
+
+            document.getElementById('previewPrefix').textContent = prefix;
+            document.getElementById('previewTitle').textContent = title;
+            document.getElementById('previewSubtitle').textContent = subtitle;
+            document.getElementById('previewAbstract').textContent = abstractText;
+            document.getElementById('previewKeywords').textContent = keywords;
+            document.getElementById('previewReferences').textContent = references;
+            document.getElementById('previewCoverLetter').textContent = coverLetter;
+            document.getElementById('previewAuthors').innerHTML = authors.length > 0 ? authors.join('<br>') : '-';
+
+            document.getElementById('previewMainFile').textContent =
+                (mainFile && mainFile.files.length > 0) ? mainFile.files[0].name : 'Seçilmedi';
+
+            document.getElementById('previewCoverLetterFile').textContent =
+                (coverLetterFile && coverLetterFile.files.length > 0) ? coverLetterFile.files[0].name : 'Seçilmedi';
+
+            document.getElementById('previewEthicsFile').textContent =
+                (ethicsApprovalFile && ethicsApprovalFile.files.length > 0) ? ethicsApprovalFile.files[0].name : 'Seçilmedi';
+
+            document.getElementById('previewCopyrightFile').textContent =
+                (copyrightTransferFile && copyrightTransferFile.files.length > 0) ? copyrightTransferFile.files[0].name : 'Seçilmedi';
+
+            document.getElementById('previewSimilarityFile').textContent =
+                (similarityReportFile && similarityReportFile.files.length > 0) ? similarityReportFile.files[0].name : 'Seçilmedi';
+
+            document.getElementById('previewSupplementaryCount').textContent =
+                (supplementaryFiles && supplementaryFiles.files.length > 0) ? supplementaryFiles.files.length : '0';
+
+            showStep(5);
+        }
+
+        let authorIndex = document.querySelectorAll('#authorsContainer .author-card').length;
+
+        function addAuthor() {
+            const container = document.getElementById('authorsContainer');
+
+            const html = `
+            <div class="author-card border rounded-4 p-3 mb-3">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <h6 class="mb-0">Yazar ${authorIndex + 1}</h6>
+                    <button type="button" class="btn btn-sm btn-outline-danger" onclick="removeAuthor(this)">Sil</button>
+                </div>
+
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <label class="form-label">Ad Soyad</label>
+                        <input name="Authors[${authorIndex}].FullName" class="form-control" />
+                    </div>
+
+                    <div class="col-md-6">
+                        <label class="form-label">E-posta</label>
+                        <input name="Authors[${authorIndex}].Email" class="form-control" />
+                    </div>
+
+                    <div class="col-md-6">
+                        <label class="form-label">Kurum</label>
+                        <input name="Authors[${authorIndex}].Institution" class="form-control" />
+                    </div>
+
+                    <div class="col-md-6">
+                        <label class="form-label">ORCID</label>
+                        <input name="Authors[${authorIndex}].Orcid" class="form-control" />
+                    </div>
+
+                    <div class="col-md-6">
+                        <label class="form-label">Rol</label>
+                        <input name="Authors[${authorIndex}].Role" value="Yazar" class="form-control" />
+                    </div>
+
+                    <div class="col-md-6 d-flex align-items-end">
+                        <div class="form-check">
+                            <input type="checkbox" name="Authors[${authorIndex}].IsCorrespondingAuthor" value="true" class="form-check-input" />
+                            <label class="form-check-label">Sorumlu Yazar</label>
+                        </div>
+                    </div>
+                </div>
+            </div>`;
+
+            container.insertAdjacentHTML('beforeend', html);
+            authorIndex++;
+        }
+
+        function removeAuthor(button) {
+            const cards = document.querySelectorAll('#authorsContainer .author-card');
+            if (cards.length <= 1) {
+                alert('En az bir yazar bulunmalıdır.');
+                return;
+            }
+
+            const card = button.closest('.author-card');
+            if (card) {
+                card.remove();
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', function () {
+            showStep(1);
+        });
+    </script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            const form = document.getElementById('submissionWizardForm');
+            const submitButton = document.getElementById('finalSubmitButton');
+
+            if (submitButton) {
+                submitButton.addEventListener('click', function () {
+                    console.log('Gönderimi Tamamla butonuna basıldı');
+                });
+            }
+
+            if (form) {
+                form.addEventListener('submit', function () {
+                    console.log('Form submit edildi');
+                });
+            }
+        });
+    </script>
+}

@@ -1,0 +1,61 @@
+@model MyDergiApp.Models.JournalIndex
+
+@{
+    ViewData["Title"] = "İndeks Düzenle";
+}
+
+<div class="card border-0 shadow-sm">
+    <div class="card-header bg-white border-0 py-3">
+        <h3 class="mb-0 fw-bold">İndeks Düzenle</h3>
+    </div>
+    <div class="card-body">
+        <form asp-action="Edit" method="post" enctype="multipart/form-data">
+            @Html.AntiForgeryToken()
+            <input type="hidden" asp-for="Id" />
+            <input type="hidden" asp-for="LogoPath" />
+
+            <div asp-validation-summary="ModelOnly" class="text-danger mb-3"></div>
+
+            <div class="mb-3">
+                <label asp-for="Name" class="form-label fw-semibold">İndeks Adı</label>
+                <input asp-for="Name" class="form-control" />
+                <span asp-validation-for="Name" class="text-danger"></span>
+            </div>
+
+            <div class="mb-3">
+                <label asp-for="Url" class="form-label fw-semibold">URL</label>
+                <input asp-for="Url" class="form-control" />
+                <span asp-validation-for="Url" class="text-danger"></span>
+            </div>
+
+            <div class="mb-3">
+                <label asp-for="SortOrder" class="form-label fw-semibold">Sıra</label>
+                <input asp-for="SortOrder" class="form-control" type="number" />
+                <span asp-validation-for="SortOrder" class="text-danger"></span>
+            </div>
+
+            <div class="mb-3">
+                <label class="form-label fw-semibold">Logo</label>
+                <input type="file" name="logoFile" class="form-control" accept=".jpg,.jpeg,.png,.webp" />
+                @if (!string.IsNullOrWhiteSpace(Model.LogoPath))
+                {
+                    <div class="mt-3">
+                        <img src="@Model.LogoPath" style="max-height:70px; max-width:160px;" class="border rounded" />
+                    </div>
+                }
+            </div>
+
+            <div class="form-check form-switch mb-4">
+                <input asp-for="IsActive" class="form-check-input" />
+                <label asp-for="IsActive" class="form-check-label">Aktif</label>
+            </div>
+
+            <button type="submit" class="btn btn-primary">Güncelle</button>
+            <a asp-action="Index" class="btn btn-secondary">Listeye Dön</a>
+        </form>
+    </div>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

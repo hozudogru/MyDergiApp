@@ -1,4 +1,4 @@
-﻿using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations;
 
 namespace MyDergiApp.Models
 {
@@ -6,26 +6,27 @@ namespace MyDergiApp.Models
     {
         public int Id { get; set; }
 
-        [Required]
-        public int Volume { get; set; }
+        [Required(ErrorMessage = "Cilt bilgisi zorunludur.")]
+        [StringLength(50)]
+        public string Volume { get; set; } = string.Empty;
 
-        [Required]
-        public int Number { get; set; }
-
-        [Required]
-        public int Year { get; set; }
+        [Required(ErrorMessage = "Sayı bilgisi zorunludur.")]
+        [StringLength(50)]
+        public string Number { get; set; } = string.Empty;
 
         [StringLength(250)]
         public string? Title { get; set; }
 
-        [StringLength(500)]
-        public string? CoverImagePath { get; set; }
+        public int Year { get; set; } = DateTime.UtcNow.Year;
 
-        public DateTime? PublishedDate { get; set; }
+        public bool IsPublished { get; set; } = false;
 
-        public string? Description { get; set; }
+        public DateTime? PublishedAt { get; set; }
 
-        public bool IsCurrent { get; set; } = false;
-        public bool IsPublished { get; set; } = true;
+        public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+
+        public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
+
+        public ICollection<PublishedArticle> Articles { get; set; } = new List<PublishedArticle>();
     }
 }

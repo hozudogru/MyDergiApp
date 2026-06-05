@@ -1,48 +1,277 @@
 ﻿@using System.Linq
 @using MyDergiApp.Models
 @using MyDergiApp.Entities
-@model MyDergiApp.Models.Submission
+@model MyDergiApp.ViewModels.Submissions.SubmissionDetailViewModel
+
 @{
-    var canManageReviewers = User.IsInRole("Admin") || User.IsInRole("Editor");
+    ViewData["Title"] = "Makale Detayı";
+
+    var renderAsAuthor = ViewBag.RenderAsAuthor == true;
+
+    var isAuthor = renderAsAuthor || User.IsInRole("Author");
+
+    var isEditor = !renderAsAuthor &&
+                   (User.IsInRole("Editor") ||
+                    User.IsInRole("ChiefEditor") ||
+                    User.IsInRole("Admin"));
+
+    var isReviewer = !renderAsAuthor && User.IsInRole("Reviewer");
+
+    var hideReviewerIdentity = renderAsAuthor || !isEditor;
+    var canManageReviewers = isEditor;
+
+    
+    
+
+    string GetDecisionText(string? decision)
+    {
+        return decision switch
+        {
+            "Accept" => "Kabul",
+            "Minor Revision" => "Minör Revizyon",
+            "Major Revision" => "Majör Revizyon",
+            "Reject" => "Red",
+            _ => string.IsNullOrWhiteSpace(decision) ? "Karar Yok" : decision
+        };
+    }
+
+    var submittedReviews = Model.Reviews?
+        .Where(r => !r.IsDraft)
+        .OrderBy(r => r.ReviewRound <= 0 ? 1 : r.ReviewRound)
+        .ThenBy(r => r.SubmittedAt ?? r.UpdatedAt ?? r.CreatedAt)
+        .ToList() ?? new List<MyDergiApp.Models.Review>();
+
+    var draftReviews = Model.Reviews?
+        .Where(r => r.IsDraft)
+        .OrderByDescending(r => r.UpdatedAt ?? r.CreatedAt)
+        .ToList() ?? new List<MyDergiApp.Models.Review>();
+
+    var finalReviews = submittedReviews;
+
+   
+
+    var acceptCount = finalReviews.Count(r => r.Decision == "Accept");
+    var minorCount = finalReviews.Count(r => r.Decision == "Minor Revision");
+    var majorCount = finalReviews.Count(r => r.Decision == "Major Revision");
+    var rejectCount = finalReviews.Count(r => r.Decision == "Reject");
+
+    var scoredReviews = finalReviews
+        .Where(r => r.OverallScore.HasValue)
+        .ToList();
+
+    var averageOverallScore = scoredReviews.Any()
+        ? scoredReviews.Average(r => r.OverallScore ?? 0)
+        : 0;
+
+    var ethicalFlagCount = finalReviews.Count(r => r.HasEthicalIssue);
+
+    string editorSuggestion;
+    string suggestionClass;
+
+    if (!finalReviews.Any())
+    {
+        editorSuggestion = "Henüz nihai hakem değerlendirmesi bulunmuyor.";
+        suggestionClass = "secondary";
+    }
+    else if (ethicalFlagCount > 0)
+    {
+        editorSuggestion = "Etik uyarı içeren hakem raporu bulundu. Editör incelemesi öncelikli yapılmalıdır.";
+        suggestionClass = "danger";
+    }
+    else if (rejectCount >= 2)
+    {
+        editorSuggestion = "Hakem çoğunluğu red yönünde. Editör kararı için güçlü red eğilimi var.";
+        suggestionClass = "danger";
+    }
+    else if (acceptCount >= 2)
+    {
+        editorSuggestion = "Hakem çoğunluğu kabul yönünde. Editör kararı için güçlü kabul eğilimi var.";
+        suggestionClass = "success";
+    }
+    else if (majorCount >= 2)
+    {
+        editorSuggestion = "Hakem çoğunluğu majör revizyon yönünde. Editörün revizyon kararı vermesi uygundur.";
+        suggestionClass = "warning";
+    }
+    else if (minorCount >= 2)
+    {
+        editorSuggestion = "Hakem çoğunluğu minör revizyon yönünde. Editörün minör revizyon kararı vermesi uygundur.";
+        suggestionClass = "info";
+    }
+    else if (rejectCount >= 1 && acceptCount >= 1)
+    {
+        editorSuggestion = "Hakem kararları arasında belirgin çelişki var. Üçüncü hakem veya editör değerlendirmesi önerilir.";
+        suggestionClass = "warning";
+    }
+    else if (majorCount >= 1 && minorCount >= 1)
+    {
+        editorSuggestion = "Hakemler revizyon gerektiği konusunda aynı yönde, ancak düzeyi farklı. Editörün kapsamı netleştirmesi önerilir.";
+        suggestionClass = "warning";
+    }
+    else if (acceptCount == 1 && minorCount == 1 && finalReviews.Count == 2)
+    {
+        editorSuggestion = "Hakemler genel olarak olumlu, ancak biri revizyon istemiş. Editör minör revizyon düşünebilir.";
+        suggestionClass = "info";
+    }
+    else
+    {
+        editorSuggestion = "Hakem raporları mevcut. Nihai editör değerlendirmesi önerilir.";
+        suggestionClass = "secondary";
+    }
 }
 
-@if (Model.Author != null)
+<div class="card border-0 shadow-sm mb-4">
+    <div class="card-header bg-white border-0 py-3">
+        <h3 class="mb-0 fw-bold">Makale Detayı</h3>
+    </div>
+    <div class="card-body">
+        <div class="row g-4">
+            <div class="col-md-8">
+                <div class="text-muted small">Ön Başlık</div>
+                <div class="mb-3">@(!string.IsNullOrWhiteSpace(Model.Prefix) ? Model.Prefix : "-")</div>
+
+                <div class="text-muted small">Başlık</div>
+                <h4 class="fw-semibold mb-3">@Model.Title</h4>
+
+                <div class="text-muted small">Alt Başlık</div>
+                <div class="mb-3">@(!string.IsNullOrWhiteSpace(Model.Subtitle) ? Model.Subtitle : "-")</div>
+            </div>
+
+            <div class="col-md-4">
+                <div class="text-muted small">Durum</div>
+                <div class="fw-semibold mb-3">@StatusDisplayHelper.GetSubmissionStatusText(Model.Status)</div>
+
+                <div class="text-muted small">Oluşturulma</div>
+                <div class="mb-3">@Model.CreatedAt.ToLocalTime().ToString("dd.MM.yyyy HH:mm")</div>
+
+                <div class="text-muted small">Güncellenme</div>
+                <div>@(Model.UpdatedAt.HasValue ? Model.UpdatedAt.Value.ToLocalTime().ToString("dd.MM.yyyy HH:mm") : "-")</div>
+            </div>
+        </div>
+
+        <hr />
+
+        <div class="mb-3">
+            <div class="text-muted small mb-1">Özet</div>
+            <div class="border rounded-4 p-3 bg-light">@Model.Abstract</div>
+        </div>
+
+        <div class="mb-3">
+            <div class="text-muted small mb-1">Anahtar Kelimeler</div>
+            <div class="border rounded-4 p-3 bg-light">@Model.Keywords</div>
+        </div>
+
+        <div class="mb-3">
+            <div class="text-muted small mb-1">Kaynakça</div>
+            <div class="border rounded-4 p-3 bg-light">@(string.IsNullOrWhiteSpace(Model.ReferencesText) ? "-" : Model.ReferencesText)</div>
+        </div>
+
+        <div class="mb-0">
+            <div class="text-muted small mb-1">Editöre Not</div>
+            <div class="border rounded-4 p-3 bg-light">@(string.IsNullOrWhiteSpace(Model.CoverLetter) ? "-" : Model.CoverLetter)</div>
+        </div>
+    </div>
+</div>
+
+@if (!string.IsNullOrWhiteSpace(Model.AuthorName) || !string.IsNullOrWhiteSpace(Model.AuthorEmail))
 {
     <div class="card border-0 shadow-sm mb-4">
         <div class="card-header bg-white border-0 py-3">
             <h5 class="mb-0 fw-semibold">Yazar Bilgileri</h5>
         </div>
         <div class="card-body">
-            @if (!string.IsNullOrWhiteSpace(Model.Author?.UserName) || !string.IsNullOrWhiteSpace(Model.Author?.Email))
+            @if (Model.Authors != null && Model.Authors.Any())
             {
-                <div class="mb-2">
-                    <strong>Ad Soyad:</strong> @(Model.Author?.UserName ?? Model.Author?.Email ?? "-")
+                <div class="table-responsive">
+                    <table class="table align-middle">
+                        <thead>
+                            <tr>
+                                <th>#</th>
+                                <th>Ad Soyad</th>
+                                <th>E-posta</th>
+                                <th>Kurum</th>
+                                <th>ORCID</th>
+                                <th>Rol</th>
+                                <th>Sorumlu</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @for (int i = 0; i < Model.Authors.Count; i++)
+                            {
+                                var author = Model.Authors[i];
+                                <tr>
+                                    <td>@(i + 1)</td>
+                                    <td>@author.FullName</td>
+                                    <td>@author.Email</td>
+                                    <td>@(string.IsNullOrWhiteSpace(author.Institution) ? "-" : author.Institution)</td>
+                                    <td>@(string.IsNullOrWhiteSpace(author.Orcid) ? "-" : author.Orcid)</td>
+                                    <td>@author.Role</td>
+                                    <td>@(author.IsCorrespondingAuthor ? "Evet" : "Hayır")</td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
                 </div>
             }
-
-            @if (!string.IsNullOrWhiteSpace(@Model.Author?.Email ?? "-"))
+            else
             {
-                <div class="mb-0">
-                    <strong>E-posta:</strong>
-                    <a href="mailto:@(Model.Author?.Email ?? "-")">@(Model.Author?.Email ?? "-")</a>
-                </div>
+                <div class="alert alert-info mb-0">Kayıtlı yazar bilgisi bulunamadı.</div>
             }
         </div>
     </div>
 }
 
 <div class="mt-3 d-flex gap-2 flex-wrap">
+    
 
-    @if (canManageReviewers)
+    @if (renderAsAuthor)
     {
-        <a asp-action="UpdateStatus" asp-route-id="@Model.Id" class="btn btn-warning">
-            Durum Güncelle
+        <a asp-controller="Submission"
+           asp-action="Makalelerim"
+           class="btn btn-secondary">
+            Makalelerime Dön
         </a>
     }
-
-    <a asp-action="AdminList" class="btn btn-secondary">
-        Listeye Dön
-    </a>
+    else if (User.IsInRole("Admin"))
+    {
+        <a asp-controller="Admin"
+           asp-action="Index"
+           class="btn btn-secondary">
+            Admin Paneline Dön
+        </a>
+    }
+    else if (User.IsInRole("ChiefEditor"))
+    {
+        <a asp-controller="Submission"
+           asp-action="OnKontrolListesi"
+           class="btn btn-secondary">
+            Ön Kontrol Listesine Dön
+        </a>
+    }
+    else if (User.IsInRole("Editor"))
+    {
+        <a asp-controller="Submission"
+           asp-action="EditorDashboard"
+           class="btn btn-secondary">
+            Editör Paneline Dön
+        </a>
+    }
+    else if (User.IsInRole("Reviewer"))
+    {
+        <a asp-controller="Submission"
+           asp-action="MyReviews"
+           class="btn btn-secondary">
+            Değerlendirmelerime Dön
+        </a>
+    }
+    else
+    {
+        <a asp-controller="Home"
+           asp-action="Index"
+           class="btn btn-secondary">
+            Ana Sayfaya Dön
+        </a>
+    }
 
     @if (canManageReviewers)
     {
@@ -64,16 +293,70 @@
         </form>
     }
 </div>
-@{
-    var submittedReviews = Model?.Reviews?
-        .Where(r => !r.IsDraft)
-        .OrderByDescending(r => r.SubmittedAt ?? r.UpdatedAt ?? r.CreatedAt)
-        .ToList() ?? new List<MyDergiApp.Models.Review>();
 
-    var draftReviews = Model?.Reviews?
-        .Where(r => r.IsDraft)
-        .OrderByDescending(r => r.UpdatedAt ?? r.CreatedAt)
-        .ToList() ?? new List<MyDergiApp.Models.Review>();
+@if (isEditor && finalReviews.Any())
+{
+    <div class="card border-0 shadow-sm mt-4">
+        <div class="card-header bg-white border-0 py-3">
+            <h5 class="mb-0 fw-semibold">Editör Karar Destek Özeti</h5>
+        </div>
+        <div class="card-body">
+            <div class="row g-3 mb-4">
+                <div class="col-md-3">
+                    <div class="decision-summary-box">
+                        <div class="small text-muted">Kabul</div>
+                        <div class="fw-bold fs-4 text-success">@acceptCount</div>
+                    </div>
+                </div>
+
+                <div class="col-md-3">
+                    <div class="decision-summary-box">
+                        <div class="small text-muted">Minör Revizyon</div>
+                        <div class="fw-bold fs-4 text-info">@minorCount</div>
+                    </div>
+                </div>
+
+                <div class="col-md-3">
+                    <div class="decision-summary-box">
+                        <div class="small text-muted">Majör Revizyon</div>
+                        <div class="fw-bold fs-4 text-warning">@majorCount</div>
+                    </div>
+                </div>
+
+                <div class="col-md-3">
+                    <div class="decision-summary-box">
+                        <div class="small text-muted">Red</div>
+                        <div class="fw-bold fs-4 text-danger">@rejectCount</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="row g-3 mb-4">
+                <div class="col-md-6">
+                    <div class="decision-summary-box">
+                        <div class="small text-muted">Ortalama Genel Puan</div>
+                        <div class="fw-bold fs-4">
+                            @(scoredReviews.Any() ? averageOverallScore.ToString("0.0") + " / 10" : "-")
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-md-6">
+                    <div class="decision-summary-box">
+                        <div class="small text-muted">Etik Uyarı İçeren Rapor</div>
+                        <div class="fw-bold fs-4 @(ethicalFlagCount > 0 ? "text-danger" : "text-success")">
+                            @ethicalFlagCount
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="alert alert-@suggestionClass rounded-4 border-0 mb-0">
+                <div class="fw-semibold mb-1">Editöre Otomatik Öneri</div>
+                <div>@editorSuggestion</div>
+            </div>
+        </div>
+    </div>
 }
 
 @if (submittedReviews.Any() || draftReviews.Any())
@@ -88,18 +371,46 @@
             {
                 <div class="mb-4">
                     <h6 class="fw-semibold mb-3">Gönderilmiş Hakem Raporları</h6>
-
-                    @foreach (var review in submittedReviews)
+                    @{
+                        var reviewerNumberByRound = new Dictionary<int, int>();
+                    }
+                    @for (int i = 0; i < submittedReviews.Count; i++)
                     {
+                        var review = submittedReviews[i];
+
+                        var reviewRound = review.ReviewRound <= 0 ? 1 : review.ReviewRound;
+
+                        if (!reviewerNumberByRound.ContainsKey(reviewRound))
+                        {
+                            reviewerNumberByRound[reviewRound] = 0;
+                        }
+
+                        reviewerNumberByRound[reviewRound]++;
+
+                        var anonymousReviewerName = $"{reviewRound}. Tur Hakem {reviewerNumberByRound[reviewRound]}";
                         <div class="review-report-card mb-4 p-4 border rounded-4 bg-light-subtle">
                             <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
                                 <div>
                                     <div class="fw-semibold">
-                                        Hakem: @(review.Reviewer?.UserName ?? review.Reviewer?.Email ?? "Anonim Hakem")
+                                        @if (hideReviewerIdentity)
+                                        {
+                                            <span>@anonymousReviewerName</span>
+                                        }
+                                        else
+                                        {
+                                            <span>
+                                                Hakem:
+                                                @(review.Reviewer?.FullName ?? review.Reviewer?.UserName ?? review.Reviewer?.Email ?? "Hakem")
+                                            </span>
+                                        }
                                     </div>
-                                    <div class="small text-muted">
-                                        Oluşturma: @review.CreatedAt.ToLocalTime().ToString("dd.MM.yyyy HH:mm")
-                                    </div>
+
+                                    @if (isEditor)
+                                    {
+                                        <div class="small text-muted">
+                                            Oluşturma: @review.CreatedAt.ToLocalTime().ToString("dd.MM.yyyy HH:mm")
+                                        </div>
+                                    }
                                 </div>
 
                                 <div class="d-flex flex-wrap gap-2">
@@ -109,26 +420,20 @@
 
                                     @if (!string.IsNullOrWhiteSpace(review.Decision))
                                     {
-                                        if (review.Decision == "Accept")
+                                        var decisionText = GetDecisionText(review.Decision);
+
+                                        var decisionClass = review.Decision switch
                                         {
-                                            <span class="badge rounded-pill bg-success px-3 py-2">Kabul</span>
-                                        }
-                                        else if (review.Decision == "Minor Revision")
-                                        {
-                                            <span class="badge rounded-pill bg-info px-3 py-2">Minör Revizyon</span>
-                                        }
-                                        else if (review.Decision == "Major Revision")
-                                        {
-                                            <span class="badge rounded-pill bg-warning text-dark px-3 py-2">Majör Revizyon</span>
-                                        }
-                                        else if (review.Decision == "Reject")
-                                        {
-                                            <span class="badge rounded-pill bg-danger px-3 py-2">Red</span>
-                                        }
-                                        else
-                                        {
-                                            <span class="badge rounded-pill bg-secondary px-3 py-2">@review.Decision</span>
-                                        }
+                                            "Accept" => "bg-success",
+                                            "Minor Revision" => "bg-info",
+                                            "Major Revision" => "bg-warning text-dark",
+                                            "Reject" => "bg-danger",
+                                            _ => "bg-secondary"
+                                        };
+
+                                        <span class="badge rounded-pill @decisionClass px-3 py-2">
+                                            @decisionText
+                                        </span>
                                     }
                                 </div>
                             </div>
@@ -138,14 +443,19 @@
                                     <div class="small text-muted">Kapsama Uygunluk</div>
                                     <div class="fw-medium">@(string.IsNullOrWhiteSpace(review.ScopeFit) ? "-" : review.ScopeFit)</div>
                                 </div>
+
                                 <div class="col-md-4">
                                     <div class="small text-muted">Genel Puan</div>
                                     <div class="fw-medium">@(review.OverallScore.HasValue ? $"{review.OverallScore}/10" : "-")</div>
                                 </div>
-                                <div class="col-md-4">
-                                    <div class="small text-muted">Etik Uyarı</div>
-                                    <div class="fw-medium">@(review.HasEthicalIssue ? "Var" : "Yok")</div>
-                                </div>
+
+                                @if (isEditor)
+                                {
+                                    <div class="col-md-4">
+                                        <div class="small text-muted">Etik Uyarı</div>
+                                        <div class="fw-medium">@(review.HasEthicalIssue ? "Var" : "Yok")</div>
+                                    </div>
+                                }
                             </div>
 
                             <div class="row g-3 mb-3">
@@ -155,18 +465,21 @@
                                         <div class="fw-semibold">@(review.OriginalityScore.HasValue ? $"{review.OriginalityScore}/5" : "-")</div>
                                     </div>
                                 </div>
+
                                 <div class="col-md-3">
                                     <div class="score-box">
                                         <div class="small text-muted">Yöntem</div>
                                         <div class="fw-semibold">@(review.MethodologyScore.HasValue ? $"{review.MethodologyScore}/5" : "-")</div>
                                     </div>
                                 </div>
+
                                 <div class="col-md-3">
                                     <div class="score-box">
                                         <div class="small text-muted">Literatür</div>
                                         <div class="fw-semibold">@(review.LiteratureScore.HasValue ? $"{review.LiteratureScore}/5" : "-")</div>
                                     </div>
                                 </div>
+
                                 <div class="col-md-3">
                                     <div class="score-box">
                                         <div class="small text-muted">Yazım Kalitesi</div>
@@ -188,6 +501,7 @@
                                     <div class="section-mini-title">Güçlü Yönler</div>
                                     <div class="review-text-box">@(string.IsNullOrWhiteSpace(review.Strengths) ? "-" : review.Strengths)</div>
                                 </div>
+
                                 <div class="col-md-6">
                                     <div class="section-mini-title">Zayıf Yönler</div>
                                     <div class="review-text-box">@(string.IsNullOrWhiteSpace(review.Weaknesses) ? "-" : review.Weaknesses)</div>
@@ -199,14 +513,17 @@
                                 <div class="review-text-box">@(string.IsNullOrWhiteSpace(review.CommentToAuthor) ? "-" : review.CommentToAuthor)</div>
                             </div>
 
-                            <div class="mb-3">
-                                <div class="section-mini-title">Editöre Gizli Not</div>
-                                <div class="review-text-box review-private-note">
-                                    @(string.IsNullOrWhiteSpace(review.CommentToEditor) ? "-" : review.CommentToEditor)
+                            @if (isEditor)
+                            {
+                                <div class="mb-3">
+                                    <div class="section-mini-title">Editöre Gizli Not</div>
+                                    <div class="review-text-box review-private-note">
+                                        @(string.IsNullOrWhiteSpace(review.CommentToEditor) ? "-" : review.CommentToEditor)
+                                    </div>
                                 </div>
-                            </div>
+                            }
 
-                            @if (!string.IsNullOrWhiteSpace(review.EthicalConcerns))
+                            @if (isEditor && !string.IsNullOrWhiteSpace(review.EthicalConcerns))
                             {
                                 <div class="mb-0">
                                     <div class="section-mini-title">Etik / Özel Uyarılar</div>
@@ -220,7 +537,7 @@
                 </div>
             }
 
-            @if (draftReviews.Any())
+            @if (isEditor && draftReviews.Any())
             {
                 <div>
                     <h6 class="fw-semibold mb-3">Taslak Değerlendirmeler</h6>
@@ -254,7 +571,169 @@
             }
         </div>
     </div>
+    
 }
+<div class="card border-0 shadow-sm mb-4">
+    <div class="card-header bg-white border-0 py-3">
+        <h5 class="mb-0 fw-semibold">Yüklenen Dosyalar</h5>
+    </div>
+    <div class="card-body">
+        @{
+            var visibleFiles = Model.Files?
+                .Where(f => isEditor || f.FileType != "HakemEkDosyasi")
+                .ToList() ?? new List<MyDergiApp.Models.SubmissionFile>();
+        }
+        @if (visibleFiles.Any())
+        {
+            <div class="table-responsive">
+                <table class="table align-middle">
+                    <thead>
+                        <tr>
+                            <th>Dosya Türü</th>
+                            <th>Orijinal Ad</th>
+                            <th>Yüklenme Tarihi</th>
+                            <th class="text-end">İşlem</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var file in visibleFiles)
+                        {
+                            <tr>
+                                <td>
+                                    <span class="badge @StatusDisplayHelper.GetFileTypeBadgeClass(file.FileType)">
+                                        @StatusDisplayHelper.GetFileTypeText(file.FileType)
+                                    </span>
+                                </td>
+                                <td>@file.OriginalFileName</td>
+                                <td>@file.UploadedAt.ToLocalTime().ToString("dd.MM.yyyy HH:mm")</td>
+                                <td class="text-end">
+                                    <a asp-controller="Submission"
+                                       asp-action="DownloadFile"
+                                       asp-route-id="@file.Id"
+                                       target="_blank"
+                                       class="btn btn-sm btn-outline-primary">
+                                        Aç / İndir
+                                    </a>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+        else
+        {
+            <div class="alert alert-info mb-0">Yüklenmiş dosya bulunamadı.</div>
+        }
+    </div>
+</div>
+@if (isEditor && Model.Reviewers != null && Model.Reviewers.Any())
+{
+    <div class="card border-0 shadow-sm mt-4">
+        <div class="card-header bg-white border-0 py-3">
+            <h5 class="mb-0 fw-semibold">Hakem Atamaları</h5>
+        </div>
+
+        <div class="card-body">
+            <div class="row g-3">
+                @foreach (var reviewer in Model.Reviewers)
+                {
+                    var reviewerName = reviewer?.ReviewerName ?? "-";
+                    var reviewerEmail = reviewer?.ReviewerEmail ?? "-";
+                    var reviewerStatus = reviewer?.Status ?? "";
+                    var reviewNote = reviewer?.ReviewNote ?? "";
+
+                    string assignedAtText;
+                    string completedAtText;
+
+                    try
+                    {
+                        assignedAtText = reviewer != null
+                            ? reviewer.AssignedAt.ToLocalTime().ToString("dd.MM.yyyy HH:mm")
+                            : "-";
+                    }
+                    catch
+                    {
+                        assignedAtText = "-";
+                    }
+
+                    try
+                    {
+                        completedAtText = reviewer?.CompletedAt != null
+                            ? reviewer.CompletedAt.Value.ToLocalTime().ToString("dd.MM.yyyy HH:mm")
+                            : "";
+                    }
+                    catch
+                    {
+                        completedAtText = "";
+                    }
+
+                    <div class="col-md-6">
+                        <div class="border rounded-4 p-3 h-100 bg-light">
+                            <div class="d-flex justify-content-between align-items-start mb-2">
+                                <div>
+                                    <div class="fw-semibold">@reviewerName</div>
+                                    <div class="small text-muted">@reviewerEmail</div>
+                                </div>
+
+                                <div class="d-flex align-items-center gap-2">
+                                    @if (reviewerStatus == "Completed")
+                                    {
+                                        <span class="badge bg-success">Tamamlandı</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="badge bg-warning text-dark">Bekliyor</span>
+                                    }
+
+                                    @if (canManageReviewers)
+                                    {
+                                        @if (reviewerStatus == "Completed")
+                                        {
+                                            <button type="button" class="btn btn-sm btn-outline-secondary" disabled>
+                                                Silinemez
+                                            </button>
+                                        }
+                                        else
+                                        {
+                                            <form asp-action="RemoveReviewer" method="post" class="d-inline"
+                                                  onsubmit="return confirm('Bu hakem ataması kaldırılsın mı?');">
+                                                @Html.AntiForgeryToken()
+                                                <input type="hidden" name="assignmentId" value="@(reviewer?.AssignmentId ?? 0)" />                                                <input type="hidden" name="submissionId" value="@Model.Id" />
+                                                <button type="submit" class="btn btn-sm btn-outline-danger">
+                                                    Sil
+                                                </button>
+                                            </form>
+                                        }
+                                    }
+                                </div>
+                            </div>
+
+                            <div class="small text-muted mb-2">
+                                Atanma: @assignedAtText
+                            </div>
+
+                            @if (!string.IsNullOrWhiteSpace(completedAtText))
+                            {
+                                <div class="small text-muted mb-3">
+                                    Tamamlanma: @completedAtText
+                                </div>
+                            }
+
+                            <div class="fw-semibold mb-2">Hakem Yorumu</div>
+                            <div class="bg-white border rounded-3 p-3 small">
+                                @(string.IsNullOrWhiteSpace(reviewNote)
+                                    ? "Henüz değerlendirme girilmemiş."
+                                    : reviewNote)
+                            </div>
+                        </div>
+                    </div>
+                }
+            </div>
+        </div>
+    </div>
+}
+
 <style>
     .review-report-card {
         background: #fcfcfd;
@@ -282,10 +761,12 @@
         border-color: #f4d27a;
     }
 
-    .score-box {
+    .score-box,
+    .decision-summary-box {
         background: #fff;
         border: 1px solid #e9ecef;
         border-radius: 14px;
         padding: .85rem 1rem;
+        height: 100%;
     }
 </style>

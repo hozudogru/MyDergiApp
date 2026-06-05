@@ -1,0 +1,155 @@
+﻿@model IEnumerable<MyDergiApp.ViewModels.Submissions.EditorSubmissionListItemViewModel>
+@inject Microsoft.AspNetCore.Identity.UserManager<MyDergiApp.Entities.AppUser> UserManager
+
+@{
+    ViewData["Title"] = "Bana Yönlendirilen Makaleler";
+    var reviewers = await UserManager.GetUsersInRoleAsync("Reviewer");
+}
+@functions {
+    public string GetStatusText(string status)
+    {
+        return status switch
+        {
+            "OnKontrolBekliyor" => "Ön Kontrol Bekliyor",
+            "YazaraIadeEdildi" => "Yazara İade Edildi",
+            "AlanEditoruneYonlendirildi" => "Alan Editörüne Yönlendirildi",
+            "HakemDegerlendirmesinde" => "Hakem Değerlendirmesinde",
+            "Reddedildi" => "Reddedildi",
+            "Gonderildi" => "Gönderildi",
+            _ => status
+        };
+    }
+}
+<div class="row g-3 mb-4">
+    <div class="col-md-4">
+        <div class="card border-0 shadow-sm">
+            <div class="card-body">
+                <div class="text-muted small">Yönlendirilen Makale</div>
+                <div class="fs-3 fw-bold">@Model.Count()</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="card border-0 shadow-sm">
+    <div class="card-header bg-white border-0 py-3 d-flex justify-content-between align-items-center">
+        <h3 class="mb-0 fw-bold">Bana Yönlendirilen Makaleler</h3>
+    </div>
+
+    <div class="card-body">
+        @if (TempData["Success"] != null)
+        {
+            <div class="alert alert-success rounded-4 border-0 shadow-sm">
+                @TempData["Success"]
+            </div>
+        }
+
+        @if (TempData["Error"] != null)
+        {
+            <div class="alert alert-danger rounded-4 border-0 shadow-sm">
+                @TempData["Error"]
+            </div>
+        }
+
+        @if (!Model.Any())
+        {
+            <div class="alert alert-info rounded-4 border-0 shadow-sm mb-0">
+                Size yönlendirilmiş makale bulunmuyor.
+            </div>
+        }
+        else
+        {
+            <div class="table-responsive">
+                <table class="table align-middle">
+                    <thead>
+                        <tr>
+                            <th>#</th>
+                            <th>Makale</th>
+                            <th>Sorumlu Yazar</th>
+                            <th>Durum</th>
+                            <th>Hakem</th>
+                            <th>Tarih</th>
+                            <th>İşlemler</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var item in Model)
+                        {
+                            var collapseId = $"editorAction_{item.Id}";
+
+                            <tr>
+                                <td>@item.Id</td>
+                                <td>
+                                    <div class="fw-semibold">@item.Title</div>
+                                    @if (!string.IsNullOrWhiteSpace(item.Subtitle))
+                                    {
+                                        <div class="small text-muted">@item.Subtitle</div>
+                                    }
+                                    <div class="mt-2">
+                                        <span class="badge rounded-pill text-bg-light border">@item.AuthorCount Yazar</span>
+                                        <span class="badge rounded-pill text-bg-light border">@item.FileCount Dosya</span>
+                                    </div>
+                                </td>
+                                <td>
+                                    <div>@(item.CorrespondingAuthorName ?? "-")</div>
+                                    <div class="small text-muted">@(item.CorrespondingAuthorEmail ?? "-")</div>
+                                </td>
+                                <td>
+                                    <span class="badge rounded-pill text-bg-light border">
+                                        @GetStatusText(item.Status)
+                                    </span>
+                                </td>
+                                <td>@item.AssignedReviewerCount</td>
+                                <td>@item.CreatedAt.ToLocalTime().ToString("dd.MM.yyyy HH:mm")</td>
+                                <td>
+                                    <div class="d-flex flex-column gap-2">
+                                        <a asp-controller="Submission"
+                                               asp-action="Detail"
+                                               asp-route-id="@item.Id"
+                                               class="btn btn-sm btn-outline-primary">
+                                            Görüntüle
+                                        </a>
+
+                                        <button class="btn btn-sm btn-outline-secondary"
+                                                type="button"
+                                                data-bs-toggle="collapse"
+                                                data-bs-target="#@collapseId">
+                                            Hakem Ata
+                                        </button>
+                                    </div>
+                                </td>
+                            </tr>
+
+                            <tr>
+                                <td colspan="7" class="p-0 border-0">
+                                    <div class="collapse" id="@collapseId">
+                                        <div class="p-3 bg-light border rounded-4 my-2">
+                                            <form asp-action="HakemAta" method="post" class="d-flex gap-2">
+                                                @Html.AntiForgeryToken()
+                                                <input type="hidden" name="submissionId" value="@item.Id" />
+
+                                                <select name="reviewerId" class="form-select">
+                                                    <option value="">Hakem seçiniz</option>
+                                                    @foreach (var reviewer in reviewers)
+                                                    {
+                                                        <option value="@reviewer.Id">
+                                                            @((reviewer.FullName ?? reviewer.Email) ?? reviewer.UserName)
+                                                        </option>
+                                                    }
+                                                </select>
+
+                                                <button type="submit" class="btn btn-success">
+                                                    Ata
+                                                </button>
+                                            </form>
+                                        </div>
+                                    </div>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+    </div>
+</div>

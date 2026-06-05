@@ -1,34 +1,420 @@
+@model MyDergiApp.ViewModels.AdminDashboardViewModel
+
 @{
     ViewData["Title"] = "Admin Paneli";
 }
 
-<div class="container mt-4">
-    <h1>Admin Paneli</h1>
+<div class="container-fluid">
 
-    <div class="alert alert-success">
-        Admin olarak giriş yaptınız.
+    <div class="mb-4">
+        <h1 class="fw-bold mb-2">Admin Paneli</h1>
+        <p class="text-muted mb-0">
+            Sistem yönetimi, içerik ayarları, yayın süreçleri ve kullanıcı işlemlerini buradan yönetebilirsiniz.
+        </p>
     </div>
 
-    <p>Hoş geldiniz, @User.Identity?.Name</p>
+    @if (TempData["Success"] != null)
+    {
+        <div class="alert alert-success rounded-4 border-0">
+            @TempData["Success"]
+        </div>
+    }
 
-    <div class="row mt-4">
-        <div class="col-md-4 mb-3">
-            <div class="card shadow-sm">
+    @if (TempData["Error"] != null)
+    {
+        <div class="alert alert-danger rounded-4 border-0">
+            @TempData["Error"]
+        </div>
+    }
+
+    <div class="row row-cols-1 row-cols-md-2 row-cols-xl-4 g-4 mb-4">
+        <div class="col">
+            <div class="card border-0 shadow-sm h-100 rounded-4">
                 <div class="card-body">
-                    <h5 class="card-title">Dergiler</h5>
-                    <p class="card-text">Dergi bilgilerini yönetin.</p>
-                    <a asp-controller="Journal" asp-action="Index" class="btn btn-primary">Dergilere Git</a>
+                    <div class="d-flex justify-content-between align-items-start">
+                        <div>
+                            <div class="text-muted small">Makale Yönetimi</div>
+                            <h4 class="fw-bold mt-2 mb-1">Tüm Makaleler</h4>
+                            <div class="display-6 fw-bold text-primary">@Model.TotalSubmissions</div>
+                            <div class="small text-muted">
+                                Bekleyen: @Model.PendingSubmissions · Süreçte: @Model.InReviewSubmissions
+                            </div>                            <p class="text-muted mb-3">Gönderimleri ve karar süreçlerini izleyin.</p>
+                        </div>
+                        <i class="bi bi-file-earmark-text fs-2 text-primary"></i>
+                    </div>
+
+                    <a asp-controller="Submission"
+                       asp-action="AdminList"
+                       class="btn btn-primary btn-sm">
+                        Makalelere Git
+                    </a>
                 </div>
             </div>
         </div>
-        <div class="col-md-4 mb-3">
-            <div class="card shadow-sm">
+
+        <div class="col">
+            <div class="card border-0 shadow-sm h-100 rounded-4">
                 <div class="card-body">
-                    <h5 class="card-title">Makaleler</h5>
-                    <p class="card-text">Makale gönderimlerini izleyin.</p>
-                    <a asp-controller="Submission" asp-action="Index" class="btn btn-primary">Makalelere Git</a>
+                    <div class="d-flex justify-content-between align-items-start">
+                        <div>
+                            <div class="text-muted small">Kullanıcı Yönetimi</div>
+                            <h4 class="fw-bold mt-2 mb-1">Kullanıcılar</h4>
+                            <div class="display-6 fw-bold text-success">@Model.TotalUsers</div>
+                            <div class="small text-muted">
+                                Aktif: @Model.ActiveUsers · Pasif: @Model.PassiveUsers
+                            </div>                            <p class="text-muted mb-3">Rol, aktiflik ve hesap işlemlerini yönetin.</p>
+                        </div>
+                        <i class="bi bi-people fs-2 text-success"></i>
+                    </div>
+
+                    <a asp-controller="UserManagement"
+                       asp-action="Index"
+                       class="btn btn-success btn-sm">
+                        Kullanıcılara Git
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <div class="col">
+            <div class="card border-0 shadow-sm h-100 rounded-4">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-start">
+                        <div>
+                            <div class="text-muted small">İçerik Yönetimi</div>
+                            <h4 class="fw-bold mt-2 mb-1">Duyurular</h4>
+                            <div class="display-6 fw-bold text-warning">@Model.TotalAnnouncements</div>
+                            <div class="small text-muted">
+                                Aktif duyuru: @Model.ActiveAnnouncements
+                            </div>                            <p class="text-muted mb-3">Ana sayfa duyurularını ve popup bildirimleri yönetin.</p>
+                        </div>
+                        <i class="bi bi-megaphone fs-2 text-warning"></i>
+                    </div>
+
+                    <a asp-controller="Announcements"
+                       asp-action="Index"
+                       class="btn btn-warning btn-sm text-dark">
+                        Duyurulara Git
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <div class="col">
+            <div class="card border-0 shadow-sm h-100 rounded-4">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-start">
+                        <div>
+                            <div class="text-muted small">Yayın Yönetimi</div>
+                            <h4 class="fw-bold mt-2 mb-1">Sayılar</h4>
+                            <div class="display-6 fw-bold text-danger">@Model.TotalIssues</div>
+                            <div class="small text-muted">
+                                Yayında: @Model.PublishedIssues · Makale: @Model.TotalPublishedArticles
+                            </div>                            <p class="text-muted mb-3">Cilt/sayı oluşturun, makale ekleyin ve yayınlayın.</p>
+                        </div>
+                        <i class="bi bi-journal-bookmark fs-2 text-danger"></i>
+                    </div>
+
+                    <a asp-controller="Issues"
+                       asp-action="Index"
+                       class="btn btn-danger btn-sm">
+                        Sayılara Git
+                    </a>
+                </div>
+            </div>
+        </div>
+
+    </div>
+    <div class="row g-4 mb-4">
+        <div class="col-md-4">
+            <div class="card border-0 shadow-sm rounded-4">
+                <div class="card-body">
+                    <div class="text-muted small">Karar Özeti</div>
+                    <div class="d-flex justify-content-between mt-3">
+                        <div>
+                            <div class="fw-bold text-success fs-4">@Model.AcceptedSubmissions</div>
+                            <div class="small text-muted">Kabul</div>
+                        </div>
+                        <div>
+                            <div class="fw-bold text-danger fs-4">@Model.RejectedSubmissions</div>
+                            <div class="small text-muted">Red</div>
+                        </div>
+                        <div>
+                            <div class="fw-bold text-primary fs-4">@Model.InReviewSubmissions</div>
+                            <div class="small text-muted">Süreçte</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-4">
+            <div class="card border-0 shadow-sm rounded-4">
+                <div class="card-body">
+                    <div class="text-muted small">Yayın Özeti</div>
+                    <div class="d-flex justify-content-between mt-3">
+                        <div>
+                            <div class="fw-bold fs-4">@Model.PublishedIssues</div>
+                            <div class="small text-muted">Yayındaki Sayı</div>
+                        </div>
+                        <div>
+                            <div class="fw-bold fs-4">@Model.TotalPublishedArticles</div>
+                            <div class="small text-muted">Yayındaki Makale</div>
+                        </div>
+                        <div>
+                            <div class="fw-bold fs-4">@Model.TotalIndexes</div>
+                            <div class="small text-muted">Aktif İndeks</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-4">
+            <div class="card border-0 shadow-sm rounded-4">
+                <div class="card-body">
+                    <div class="text-muted small">Kullanıcı Özeti</div>
+                    <div class="d-flex justify-content-between mt-3">
+                        <div>
+                            <div class="fw-bold text-success fs-4">@Model.ActiveUsers</div>
+                            <div class="small text-muted">Aktif</div>
+                        </div>
+                        <div>
+                            <div class="fw-bold text-secondary fs-4">@Model.PassiveUsers</div>
+                            <div class="small text-muted">Pasif</div>
+                        </div>
+                        <div>
+                            <div class="fw-bold text-primary fs-4">@Model.TotalUsers</div>
+                            <div class="small text-muted">Toplam</div>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
     </div>
+    <div class="row g-4">
+
+        <div class="col-lg-8">
+            <div class="card border-0 shadow-sm rounded-4">
+                <div class="card-header bg-white border-0 py-3">
+                    <h5 class="fw-bold mb-0">Hızlı Yönetim</h5>
+                </div>
+
+                <div class="card-body">
+                    <div class="row g-3">
+
+                        <div class="col-md-6">
+                            <a asp-controller="HomePageSettings"
+                               asp-action="Index"
+                               class="text-decoration-none">
+                                <div class="quick-admin-card">
+                                    <div>
+                                        <h6 class="fw-bold mb-1">Ana Sayfa Ayarları</h6>
+                                        <p class="text-muted mb-0 small">
+                                            Başlık, banner, tema, renk ve iletişim bilgilerini düzenleyin.
+                                        </p>
+                                    </div>
+                                    <i class="bi bi-house-gear fs-3"></i>
+                                </div>
+                            </a>
+                        </div>
+
+                        <div class="col-md-6">
+                            <a asp-controller="JournalIndexes"
+                               asp-action="Index"
+                               class="text-decoration-none">
+                                <div class="quick-admin-card">
+                                    <div>
+                                        <h6 class="fw-bold mb-1">Dergi İndeksleri</h6>
+                                        <p class="text-muted mb-0 small">
+                                            TR Dizin, DOAJ, Google Scholar gibi indeksleri yönetin.
+                                        </p>
+                                    </div>
+                                    <i class="bi bi-award fs-3"></i>
+                                </div>
+                            </a>
+                        </div>
+
+                        <div class="col-md-6">
+                            <a asp-controller="Journal"
+                               asp-action="Index"
+                               class="text-decoration-none">
+                                <div class="quick-admin-card">
+                                    <div>
+                                        <h6 class="fw-bold mb-1">Dergiler</h6>
+                                        <p class="text-muted mb-0 small">
+                                            Dergi kayıtlarını ve temel dergi bilgilerini yönetin.
+                                        </p>
+                                    </div>
+                                    <i class="bi bi-journals fs-3"></i>
+                                </div>
+                            </a>
+                        </div>
+
+                        <div class="col-md-6">
+                            <a asp-controller="Admin"
+                               asp-action="Index"
+                               class="text-decoration-none">
+                                <div class="quick-admin-card">
+                                    <div>
+                                        <h6 class="fw-bold mb-1">Sistem Paneli</h6>
+                                        <p class="text-muted mb-0 small">
+                                            Yönetim paneli genel görünümüne dönün.
+                                        </p>
+                                    </div>
+                                    <i class="bi bi-speedometer2 fs-3"></i>
+                                </div>
+                            </a>
+                        </div>
+
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-4">
+            <div class="card border-0 shadow-sm rounded-4 h-100">
+                <div class="card-header bg-white border-0 py-3">
+                    <h5 class="fw-bold mb-0">Yayın Öncesi Kontrol</h5>
+                </div>
+
+                <div class="card-body">
+                    <ul class="list-unstyled mb-0 admin-check-list">
+
+                        <li>
+                            @if (Model.HasHomePageSettings)
+                            {
+                                <i class="bi bi-check-circle text-success"></i>
+                                <span>Ana sayfa ayarları aktif</span>
+                            }
+                            else
+                            {
+                                <i class="bi bi-exclamation-triangle text-warning"></i>
+                                <span>Ana sayfa ayarları eksik veya pasif</span>
+                            }
+                        </li>
+
+                        <li>
+                            @if (Model.HasActiveAnnouncement)
+                            {
+                                <i class="bi bi-check-circle text-success"></i>
+                                <span>Aktif duyuru var</span>
+                            }
+                            else
+                            {
+                                <i class="bi bi-exclamation-triangle text-warning"></i>
+                                <span>Aktif duyuru bulunmuyor</span>
+                            }
+                        </li>
+
+                        <li>
+                            @if (Model.HasPublishedIssue)
+                            {
+                                <i class="bi bi-check-circle text-success"></i>
+                                <span>Yayında sayı var</span>
+                            }
+                            else
+                            {
+                                <i class="bi bi-exclamation-triangle text-warning"></i>
+                                <span>Yayında sayı bulunmuyor</span>
+                            }
+                        </li>
+
+                        <li>
+                            @if (Model.HasPublishedArticle)
+                            {
+                                <i class="bi bi-check-circle text-success"></i>
+                                <span>Yayında makale var</span>
+                            }
+                            else
+                            {
+                                <i class="bi bi-exclamation-triangle text-warning"></i>
+                                <span>Yayında makale bulunmuyor</span>
+                            }
+                        </li>
+
+                        <li>
+                            @if (Model.HasActiveIndexes)
+                            {
+                                <i class="bi bi-check-circle text-success"></i>
+                                <span>Aktif indeks bilgisi var</span>
+                            }
+                            else
+                            {
+                                <i class="bi bi-exclamation-triangle text-warning"></i>
+                                <span>Aktif indeks bilgisi bulunmuyor</span>
+                            }
+                        </li>
+
+                        <li>
+                            @if (!Model.HasPassiveUsers)
+                            {
+                                <i class="bi bi-check-circle text-success"></i>
+                                <span>Pasif kullanıcı bulunmuyor</span>
+                            }
+                            else
+                            {
+                                <i class="bi bi-exclamation-triangle text-warning"></i>
+                                <span>Pasif kullanıcı var, kontrol edin</span>
+                            }
+                        </li>
+
+                        <li>
+                            @if (Model.HasSmtpSettings)
+                            {
+                                <i class="bi bi-check-circle text-success"></i>
+                                <span>SMTP ayarları tanımlı</span>
+                            }
+                            else
+                            {
+                                <i class="bi bi-x-circle text-danger"></i>
+                                <span>SMTP ayarları eksik</span>
+                            }
+                        </li>
+
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
 </div>
+
+<style>
+    .quick-admin-card {
+        border: 1px solid #e5e7eb;
+        border-radius: 18px;
+        padding: 18px;
+        min-height: 112px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        color: #111827;
+        background: #ffffff;
+        transition: all .2s ease;
+    }
+
+    .quick-admin-card:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 14px 35px rgba(15, 23, 42, .10);
+        border-color: #cbd5e1;
+    }
+
+    .admin-check-list li {
+        padding: 12px 0;
+        border-bottom: 1px solid #f1f5f9;
+        display: flex;
+        gap: 10px;
+        align-items: center;
+        font-size: 15px;
+    }
+
+        .admin-check-list li:last-child {
+            border-bottom: none;
+        }
+
+    .admin-check-list i {
+        font-size: 18px;
+    }
+</style>

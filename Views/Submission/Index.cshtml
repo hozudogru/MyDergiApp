@@ -30,12 +30,12 @@
             <tr>
                 <td>@item.Title</td>
                 <td>@item.Author?.FullName</td>
-                <td>@item.Status</td>
+                <td>@StatusDisplayHelper.GetSubmissionStatusText(item.Status)</td>
                 <td>@item.CreatedAt.ToLocalTime().ToString("dd.MM.yyyy HH:mm")</td>
                 <td>
                     <a asp-action="Detail" asp-route-id="@item.Id" class="btn btn-sm btn-info">Detay</a>
 
-                    @if (User.IsInRole("Author") && item.Status == SubmissionStatus.Submitted)
+                    @if (User.IsInRole("Author") && item.Status == SubmissionStatus.Gonderildi)
                     {
                         <a asp-action="Edit" asp-route-id="@item.Id" class="btn btn-sm btn-warning">Düzenle</a>
                     }

@@ -1,0 +1,92 @@
+@model IEnumerable<MyDergiApp.Models.JournalIndex>
+
+@{
+    ViewData["Title"] = "Dergi İndeksleri";
+}
+
+<div class="card border-0 shadow-sm">
+    <div class="card-header bg-white border-0 py-3 d-flex justify-content-between align-items-center">
+        <h3 class="mb-0 fw-bold">Dergi İndeksleri</h3>
+        <a asp-action="Create" class="btn btn-primary">Yeni İndeks Ekle</a>
+    </div>
+
+    <div class="card-body">
+        @if (TempData["Success"] != null)
+        {
+            <div class="alert alert-success rounded-4 border-0">@TempData["Success"]</div>
+        }
+
+        @if (!Model.Any())
+        {
+            <div class="alert alert-info mb-0">Henüz indeks bilgisi eklenmemiş.</div>
+        }
+        else
+        {
+            <div class="table-responsive">
+                <table class="table align-middle">
+                    <thead>
+                        <tr>
+                            <th style="width:70px;">Sıra</th>
+                            <th>Logo</th>
+                            <th>İndeks</th>
+                            <th>URL</th>
+                            <th>Durum</th>
+                            <th class="text-end">İşlem</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var item in Model)
+                        {
+                            <tr>
+                                <td>@item.SortOrder</td>
+                                <td style="width:120px;">
+                                    @if (!string.IsNullOrWhiteSpace(item.LogoPath))
+                                    {
+                                        <img src="@item.LogoPath" style="max-height:42px; max-width:100px;" />
+                                    }
+                                    else
+                                    {
+                                        <span class="text-muted">-</span>
+                                    }
+                                </td>
+                                <td class="fw-semibold">@item.Name</td>
+                                <td>
+                                    @if (!string.IsNullOrWhiteSpace(item.Url))
+                                    {
+                                        <a href="@item.Url" target="_blank">@item.Url</a>
+                                    }
+                                    else
+                                    {
+                                        <span class="text-muted">-</span>
+                                    }
+                                </td>
+                                <td>
+                                    <span class="badge @(item.IsActive ? "bg-success" : "bg-secondary")">
+                                        @(item.IsActive ? "Aktif" : "Pasif")
+                                    </span>
+                                </td>
+                                <td class="text-end">
+                                    <a asp-action="Edit" asp-route-id="@item.Id" class="btn btn-sm btn-outline-primary">Düzenle</a>
+
+                                    <form asp-action="ToggleActive" method="post" class="d-inline">
+                                        @Html.AntiForgeryToken()
+                                        <input type="hidden" name="id" value="@item.Id" />
+                                        <button type="submit" class="btn btn-sm btn-outline-secondary">
+                                            @(item.IsActive ? "Pasif Yap" : "Aktif Yap")
+                                        </button>
+                                    </form>
+
+                                    <form asp-action="Delete" method="post" class="d-inline" onsubmit="return confirm('Bu indeks silinsin mi?');">
+                                        @Html.AntiForgeryToken()
+                                        <input type="hidden" name="id" value="@item.Id" />
+                                        <button type="submit" class="btn btn-sm btn-outline-danger">Sil</button>
+                                    </form>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+    </div>
+</div>

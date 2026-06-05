@@ -51,10 +51,10 @@ namespace MyDergiApp.Areas.Admin.Controllers
 
             submission.Status = submission.Status switch
             {
-                SubmissionStatus.Submitted => SubmissionStatus.InReview,
-                SubmissionStatus.InReview => SubmissionStatus.Accepted,
-                SubmissionStatus.Accepted => SubmissionStatus.Rejected,
-                _ => SubmissionStatus.Submitted
+                SubmissionStatus.Gonderildi => SubmissionStatus.HakemDegerlendirmesinde,
+                SubmissionStatus.HakemDegerlendirmesinde => SubmissionStatus.KabulEdildi,
+                SubmissionStatus.KabulEdildi => SubmissionStatus.Reddedildi,
+                _ => SubmissionStatus.Gonderildi
             };
 
             submission.UpdatedAt = DateTime.UtcNow;

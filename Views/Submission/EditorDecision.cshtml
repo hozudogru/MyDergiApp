@@ -1,186 +1,1164 @@
-﻿@model MyDergiApp.ViewModels.Submissions.EditorDecisionViewModel
-@using MyDergiApp.Entities
+﻿@model MyDergiApp.Models.Submission
+@using MyDergiApp.Models
 
 @{
     ViewData["Title"] = "Editör Kararı";
+
+    int totalReviewerCount = ViewBag.TotalReviewerCount ?? 0;
+    int completedReviewerCount = ViewBag.CompletedReviewerCount ?? 0;
+    bool allReviewsCompleted = ViewBag.AllReviewsCompleted == true;
+    bool hasConflictingReviews = ViewBag.HasConflictingReviews == true;
+    bool canAssignAdditionalReviewer = ViewBag.CanAssignAdditionalReviewer == true;
+
+    var allAssignments = ViewBag.RoundAssignments as List<MyDergiApp.Models.SubmissionReviewer>
+                         ?? new List<MyDergiApp.Models.SubmissionReviewer>();
+
+    var reviewers = ViewBag.Reviewers as List<MyDergiApp.Entities.AppUser>
+                    ?? new List<MyDergiApp.Entities.AppUser>();
+
+    var isFinalDecisionGiven =
+    Model.Status == SubmissionStatus.KabulEdildi ||
+    Model.Status == SubmissionStatus.Reddedildi ||
+    Model.Status == SubmissionStatus.GeriCekildi;
 }
 
-<div class="d-flex justify-content-between align-items-center mb-4">
-    <div>
-        <h2 class="fw-bold mb-1">Editör Karar Paneli</h2>
-        <p class="text-muted mb-0">Hakem değerlendirmelerine göre nihai kararı verin.</p>
-    </div>
-    <a asp-action="Detail" asp-route-id="@Model.SubmissionId" class="btn btn-outline-secondary rounded-pill">
-        <i class="bi bi-arrow-left me-1"></i> Detaya Dön
-    </a>
-</div>
+<div class="editor-decision-page">
 
-<div class="row g-3 mb-4">
-    <div class="col-md-4">
-        <div class="card border-0 shadow-sm">
-            <div class="card-body">
-                <div class="text-muted small mb-2">Makale</div>
-                <div class="fw-semibold">@Model.Title</div>
+    <!-- ÜST BİLGİ -->
+    <div class="submission-header mb-4">
+        <div>
+            <div class="submission-breadcrumb">
+                <span>@Model.Id</span>
+                <span>/</span>
+                <strong>@(Model.Authors?.OrderBy(a => a.SortOrder).FirstOrDefault()?.FullName ?? "Yazar")</strong>
+                <span>/</span>
+                <span>@Model.Title</span>
+            </div>
+
+            <h2 class="fw-bold mt-3 mb-1">Editör Kararı</h2>
+
+            @if (!string.IsNullOrWhiteSpace(Model.Subtitle))
+            {
+                <div class="text-muted fs-6">@Model.Subtitle</div>
+            }
+
+            <div class="d-flex flex-wrap gap-3 small text-muted mt-3">
+                <span><strong>Makale No:</strong> @Model.Id</span>
+
+                <span>
+                    <strong>Durum:</strong>
+                    <span class="badge @StatusDisplayHelper.GetSubmissionStatusBadgeClass(Model.Status)">
+                        @StatusDisplayHelper.GetSubmissionStatusText(Model.Status)
+                    </span>
+                </span>
+
+                <span><strong>Tur:</strong> @Model.CurrentReviewRound. Tur</span>
+                <span><strong>Oluşturulma:</strong> @Model.CreatedAt.ToLocalTime().ToString("dd.MM.yyyy HH:mm")</span>
             </div>
         </div>
+
+        <div>
+            <a asp-controller="Submission"
+               asp-action="EditorDashboard"
+               class="btn btn-outline-secondary">
+                Dashboard'a Dön
+            </a>
+        </div>
     </div>
 
-    <div class="col-md-4">
-        <div class="card border-0 shadow-sm">
-            <div class="card-body">
-                <div class="text-muted small mb-2">Tamamlanan Hakem</div>
-                <div class="fs-4 fw-bold">@Model.CompletedReviewerCount / @Model.TotalReviewerCount</div>
-            </div>
-        </div>
-    </div>
+    <!-- HAKEM TAMAMLANMA DURUMU -->
+    <div class="alert @(canAssignAdditionalReviewer ? "alert-warning" : allReviewsCompleted ? "alert-success" : "alert-info") rounded-4 border-0 shadow-sm mb-4">
+        <strong>@Model.CurrentReviewRound. Tur Hakem Durumu:</strong>
+        @completedReviewerCount / @totalReviewerCount hakem değerlendirmesini tamamladı.
 
-    <div class="col-md-4">
-        <div class="card border-0 shadow-sm border-start border-4 border-primary">
-            <div class="card-body">
-                <div class="text-muted small mb-2">Sistem Önerisi</div>
-                <div class="fw-semibold text-primary">@Model.SuggestedDecision</div>
-            </div>
-        </div>
-    </div>
-</div>
-@if (Model.HasConflict)
-{
-    <div class="alert alert-danger border-0 shadow-sm mb-4">
-        <div class="fw-semibold mb-1">
-            <i class="bi bi-exclamation-triangle-fill me-2"></i>Hakem Kararlarında Çelişki
-        </div>
-        <div>@Model.ConflictMessage</div>
-    </div>
-}
-<div class="card border-0 shadow-sm mb-4">
-    <div class="card-header bg-white border-0 py-3">
-        <h5 class="mb-0 fw-semibold">Hakem Görüşleri</h5>
-    </div>
-    <div class="card-body">
-        @if (Model.Reviews == null || !Model.Reviews.Any())
+        @if (canAssignAdditionalReviewer)
         {
-            <div class="text-muted">Henüz hakem değerlendirmesi bulunmuyor.</div>
+            <span class="ms-2 fw-semibold">
+                Hakem kararları çelişkili görünüyor. Gerekirse ek / 3. hakem atanabilir.
+            </span>
+        }
+        else if (hasConflictingReviews && allReviewsCompleted)
+        {
+            <span class="ms-2 fw-semibold">
+                Hakem raporları tamamlandı. Çelişkili görüşler editör kararıyla sonuçlandırılabilir.
+            </span>
+        }
+        else if (allReviewsCompleted)
+        {
+            <span class="ms-2 fw-semibold">
+                Hakem raporları tamamlandı. Editör kararı verilebilir.
+            </span>
         }
         else
         {
-            <div class="row g-3">
-                @foreach (var review in Model.Reviews)
+            <span class="ms-2">
+                Hakem değerlendirmeleri bekleniyor.
+            </span>
+        }
+    </div>
+    @if (isFinalDecisionGiven)
+    {
+        <div class="alert alert-success rounded-4 border-0 shadow-sm mb-4">
+            <strong>Bu makale için nihai editör kararı verilmiştir.</strong>
+            Kabul, red veya revizyon kararı tekrar verilemez.
+        </div>
+    }
+
+    <!-- SÜREÇ SEKMELERİ -->
+    <div class="workflow-panel mb-4">
+        <div class="workflow-main-tabs">
+            <a asp-controller="Submission"
+               asp-action="Detail"
+               asp-route-id="@Model.Id"
+               class="workflow-main-tab">
+                Gönderi
+            </a>
+
+            <a href="#"
+               class="workflow-main-tab active">
+                Değerlendir
+            </a>
+
+            <a href="#"
+               class="workflow-main-tab disabled-tab">
+                Kopya Düzenleme
+            </a>
+
+            <a href="#"
+               class="workflow-main-tab disabled-tab">
+                Basım
+            </a>
+        </div>
+
+        <div class="workflow-round-tabs">
+            @for (int i = 1; i <= Model.CurrentReviewRound; i++)
+            {
+                <a href="#round-@i"
+                   class="workflow-round-tab @(i == Model.CurrentReviewRound ? "active" : "")">
+                    @i. Tur
+                </a>
+            }
+
+            <a href="#"
+               class="workflow-round-tab new-round disabled-tab">
+                Yeni Değerlendirme Turu
+            </a>
+        </div>
+    </div>
+
+    <!-- ANA İÇERİK -->
+    <div class="review-layout">
+
+        <!-- SOL ANA KOLON -->
+        <div class="review-main">
+
+            <!-- TUR DURUMU -->
+            <div class="round-status-box mb-4">
+                <div class="round-status-title">
+                    @Model.CurrentReviewRound. Tur Durumu
+                </div>
+
+                @if (Model.Status == SubmissionStatus.RevizyonYuklendi)
                 {
-                    <div class="col-md-6">
-                        <div class="border rounded-4 p-3 h-100 bg-light">
-                            <div class="d-flex justify-content-between align-items-start mb-2">
+                    <div>Yazar revizyon dosyasını yükledi. Yeni değerlendirme veya karar bekleniyor.</div>
+                }
+                else if (Model.Status == SubmissionStatus.HakemDegerlendirmesinde)
+                {
+                    <div>Hakem değerlendirmesi devam ediyor.</div>
+                }
+                else if (Model.Status == SubmissionStatus.HakemAtamasiBekliyor)
+                {
+                    <div>@Model.CurrentReviewRound. tur değerlendirme süreci başlatıldı. Hakem ataması bekleniyor.</div>
+                }
+                else if (Model.Status == SubmissionStatus.RevizyonIstendi)
+                {
+                    <div>Yazardan revizyon bekleniyor.</div>
+                }
+                else if (Model.Status == SubmissionStatus.KabulEdildi)
+                {
+                    <div>Gönderi kabul edildi.</div>
+                }
+                else if (Model.Status == SubmissionStatus.Reddedildi)
+                {
+                    <div>Gönderi reddedildi.</div>
+                }
+                else
+                {
+                    <div>Bu tur için işlem bekleniyor.</div>
+                }
+            </div>
+
+            @if (allAssignments.Any(sr => sr.ReviewRound == Model.CurrentReviewRound) &&
+                 (Model.Reviews == null || !Model.Reviews.Any(r => r.ReviewRound == Model.CurrentReviewRound && !r.IsDraft)))
+            {
+                <div class="alert alert-info border-0 rounded-4 mb-4">
+                    @Model.CurrentReviewRound. tur için hakem ataması yapıldı.
+                    Henüz bu tura ait nihai hakem raporu gönderilmedi.
+                </div>
+            }
+
+            <!-- DEĞERLENDİRME TURLARI -->
+            <div class="card border-0 shadow-sm mb-4">
+                <div class="card-header bg-white border-0 pt-4 pb-0 px-4">
+                    <h4 class="fw-bold mb-3">Değerlendirme Turları</h4>
+                </div>
+
+                <div class="card-body p-4">
+                    @for (int round = 1; round <= Model.CurrentReviewRound; round++)
+                    {
+                        var roundFiles = Model.Files?
+                            .Where(f => (f.ReviewRound <= 0 ? 1 : f.ReviewRound) == round)
+                            .OrderByDescending(f => f.UploadedAt)
+                            .ToList() ?? new List<MyDergiApp.Models.SubmissionFile>();
+
+                        var roundReviewers = allAssignments
+                            .Where(sr => (sr.ReviewRound <= 0 ? 1 : sr.ReviewRound) == round)
+                            .OrderByDescending(sr => sr.AssignedAt)
+                            .ToList();
+
+                        var roundReviews = Model.Reviews?
+                            .Where(r => (r.ReviewRound <= 0 ? 1 : r.ReviewRound) == round && !r.IsDraft)
+                            .OrderByDescending(r => r.SubmittedAt ?? r.UpdatedAt ?? r.CreatedAt)
+                            .ToList() ?? new List<MyDergiApp.Models.Review>();
+
+                        var isCurrentRound = round == Model.CurrentReviewRound;
+                        var collapseId = $"roundCollapse{round}";
+
+                        <div id="round-@round" class="round-card mb-3 @(isCurrentRound ? "current-round" : "")">
+                            <button class="round-card-header"
+                                    type="button"
+                                    data-bs-toggle="collapse"
+                                    data-bs-target="#@collapseId"
+                                    aria-expanded="@(isCurrentRound ? "true" : "false")"
+                                    aria-controls="@collapseId">
+
                                 <div>
-                                    <div class="fw-semibold">@review.ReviewerName</div>
-                                    <div class="small text-muted">@review.ReviewerEmail</div>
+                                    <div class="round-title">
+                                        @round. Tur
+
+                                        @if (isCurrentRound)
+                                        {
+                                            <span class="badge bg-primary ms-2">Aktif Tur</span>
+                                        }
+                                    </div>
+
+                                    <div class="round-summary">
+                                        Dosya: @roundFiles.Count |
+                                        Hakem: @roundReviewers.Count |
+                                        Rapor: @roundReviews.Count
+                                    </div>
                                 </div>
 
-                                @if (review.IsCompleted)
-                                {
-                                    <span class="badge bg-success">Tamamlandı</span>
-                                }
-                                else
-                                {
-                                    <span class="badge bg-warning text-dark">Bekliyor</span>
-                                }
-                            </div>
+                                <span class="round-toggle-text">
+                                    Detayları Göster / Gizle
+                                </span>
+                            </button>
 
-                            <div class="mb-2">
-                                <span class="text-muted small">Karar:</span>
-                                @if (string.IsNullOrWhiteSpace(review.Decision))
-                                {
-                                    <span class="ms-1 text-muted">-</span>
-                                }
-                                else if (review.Decision == "Accept")
-                                {
-                                    <span class="badge bg-success-subtle text-success-emphasis ms-1">Accept</span>
-                                }
-                                else if (review.Decision == "Minor Revision")
-                                {
-                                    <span class="badge bg-info-subtle text-info-emphasis ms-1">Minor Revision</span>
-                                }
-                                else if (review.Decision == "Major Revision")
-                                {
-                                    <span class="badge bg-warning-subtle text-warning-emphasis ms-1">Major Revision</span>
-                                }
-                                else if (review.Decision == "Reject")
-                                {
-                                    <span class="badge bg-danger-subtle text-danger-emphasis ms-1">Reject</span>
-                                }
-                                else
-                                {
-                                    <span class="badge bg-secondary-subtle text-secondary-emphasis ms-1">@review.Decision</span>
-                                }
-                            </div>
+                            <div id="@collapseId"
+                                 class="collapse @(isCurrentRound ? "show" : "")">
 
-                            @if (review.CompletedAt.HasValue)
-                            {
-                                <div class="small text-muted mb-2">
-                                    Son işlem: @review.CompletedAt.Value.ToLocalTime().ToString("dd.MM.yyyy HH:mm")
+                                <div class="round-card-body">
+
+                                    <div class="round-status-mini mb-4">
+                                        <strong>@round. Tur Durumu:</strong>
+
+                                        @if (isCurrentRound && Model.Status == SubmissionStatus.RevizyonYuklendi)
+                                        {
+                                            <span>Yazar revizyon dosyasını yükledi. Yeni değerlendirme veya karar bekleniyor.</span>
+                                        }
+                                        else if (isCurrentRound && Model.Status == SubmissionStatus.HakemAtamasiBekliyor)
+                                        {
+                                            <span>Hakem ataması bekleniyor.</span>
+                                        }
+                                        else if (isCurrentRound && Model.Status == SubmissionStatus.HakemDegerlendirmesinde)
+                                        {
+                                            <span>Hakem değerlendirmesi devam ediyor.</span>
+                                        }
+                                        else if (isCurrentRound && Model.Status == SubmissionStatus.RevizyonIstendi)
+                                        {
+                                            <span>Yazardan revizyon bekleniyor.</span>
+                                        }
+                                        else if (roundReviews.Any())
+                                        {
+                                            <span>Bu turda hakem raporu bulunmaktadır.</span>
+                                        }
+                                        else
+                                        {
+                                            <span>Bu tur için kayıtlı rapor bulunmuyor.</span>
+                                        }
+                                    </div>
+
+                                    <!-- TUR DOSYALARI -->
+                                    <div class="section-subtitle">Tur Dosyaları</div>
+
+                                    @if (roundFiles.Any())
+                                    {
+                                        <div class="table-responsive mb-4">
+                                            <table class="table table-sm align-middle">
+                                                <thead>
+                                                    <tr>
+                                                        <th>#</th>
+                                                        <th>Dosya</th>
+                                                        <th>Dosya Türü</th>
+                                                        <th>Yükleme Tarihi</th>
+                                                        <th class="text-end">İşlem</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    @foreach (var file in roundFiles)
+                                                    {
+                                                        <tr>
+                                                            <td>@file.Id</td>
+                                                            <td>
+                                                                <strong>@file.OriginalFileName</strong>
+
+                                                                <span class="badge @StatusDisplayHelper.GetFileTypeBadgeClass(file.FileType) ms-2">
+                                                                    @StatusDisplayHelper.GetFileTypeText(file.FileType)
+                                                                </span>
+                                                            </td>
+                                                            <td>
+                                                                <span class="badge @StatusDisplayHelper.GetFileTypeBadgeClass(file.FileType)">
+                                                                    @StatusDisplayHelper.GetFileTypeText(file.FileType)
+                                                                </span>
+                                                            </td>
+                                                            <td>@file.UploadedAt.ToLocalTime().ToString("dd.MM.yyyy HH:mm")</td>
+                                                            <td class="text-end">
+                                                                <a asp-controller="Submission"
+                                                                   asp-action="DownloadFile"
+                                                                   asp-route-id="@file.Id"
+                                                                   target="_blank"
+                                                                   class="btn btn-sm btn-outline-primary">
+                                                                    Aç / İndir
+                                                                </a>
+                                                            </td>
+                                                        </tr>
+                                                    }
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    }
+                                    else
+                                    {
+                                        <div class="alert alert-light border mb-4">
+                                            Bu tura ait dosya bulunmuyor.
+                                        </div>
+                                    }
+
+                                    <!-- HAKEM ATAMALARI -->
+                                    <div class="section-subtitle">Hakem Atamaları</div>
+
+                                    @if (roundReviewers.Any())
+                                    {
+                                        <div class="table-responsive mb-4">
+                                            <table class="table table-sm align-middle">
+                                                <thead>
+                                                    <tr>
+                                                        <th>Hakem</th>
+                                                        <th>Durum</th>
+                                                        <th>Atama Tarihi</th>
+                                                        <th>Son Tarih</th>
+                                                        <th>Tamamlanma</th>
+                                                        <th class="text-end">İşlem</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    @foreach (var sr in roundReviewers)
+                                                    {
+                                                        var isOverdue = sr.DueDate.HasValue
+                                                            && sr.DueDate.Value < DateTime.UtcNow
+                                                            && sr.Status != ReviewerAssignmentStatus.Completed
+                                                            && sr.Status != ReviewerAssignmentStatus.Cancelled
+                                                            && sr.Status != ReviewerAssignmentStatus.Declined;
+
+                                                        <tr>
+                                                            <td>
+                                                                @(sr.Reviewer?.FullName ?? sr.Reviewer?.UserName ?? sr.Reviewer?.Email ?? "-")
+
+                                                                @if (sr.ReminderCount > 0)
+                                                                {
+                                                                    <div class="small text-muted">
+                                                                        Hatırlatma: @sr.ReminderCount kez
+                                                                    </div>
+                                                                }
+                                                            </td>
+
+                                                            <td>
+                                                                @if (isOverdue)
+                                                                {
+                                                                    <span class="badge bg-danger">
+                                                                        Gecikti
+                                                                    </span>
+                                                                }
+                                                                else
+                                                                {
+                                                                    <span class="badge @StatusDisplayHelper.GetReviewerAssignmentBadgeClass(sr.Status)">
+                                                                        @StatusDisplayHelper.GetReviewerAssignmentStatusText(sr.Status)
+                                                                    </span>
+                                                                }
+                                                            </td>
+
+                                                            <td>@sr.AssignedAt.ToLocalTime().ToString("dd.MM.yyyy HH:mm")</td>
+
+                                                            <td>
+                                                                @(sr.DueDate.HasValue
+                                                                    ? sr.DueDate.Value.ToLocalTime().ToString("dd.MM.yyyy")
+                                                                    : "-")
+                                                            </td>
+
+                                                            <td>
+                                                                @(sr.CompletedAt.HasValue
+                                                                    ? sr.CompletedAt.Value.ToLocalTime().ToString("dd.MM.yyyy HH:mm")
+                                                                    : "-")
+                                                            </td>
+
+                                                            <td class="text-end">
+                                                                @if (sr.Status != ReviewerAssignmentStatus.Completed &&
+                                                                     sr.Status != ReviewerAssignmentStatus.Cancelled &&
+                                                                     sr.Status != ReviewerAssignmentStatus.Declined)
+                                                                {
+                                                                    <form asp-controller="Submission"
+                                                                          asp-action="SendReviewerReminder"
+                                                                          method="post"
+                                                                          class="d-inline">
+                                                                        @Html.AntiForgeryToken()
+                                                                        <input type="hidden" name="assignmentId" value="@sr.Id" />
+
+                                                                        <button type="submit" class="btn btn-sm btn-outline-primary">
+                                                                            Hatırlat
+                                                                        </button>
+                                                                    </form>
+
+                                                                    <form asp-controller="Submission"
+                                                                          asp-action="CancelReviewerAssignment"
+                                                                          method="post"
+                                                                          class="d-inline ms-1">
+                                                                        @Html.AntiForgeryToken()
+                                                                        <input type="hidden" name="assignmentId" value="@sr.Id" />
+                                                                        <input type="hidden" name="reason" value="Editör tarafından yeniden atama için iptal edildi." />
+
+                                                                        <button type="submit" class="btn btn-sm btn-outline-danger">
+                                                                            İptal Et
+                                                                        </button>
+                                                                    </form>
+                                                                }
+                                                                else
+                                                                {
+                                                                    <span class="text-muted small">İşlem yok</span>
+                                                                }
+                                                            </td>
+                                                        </tr>
+                                                    }
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    }
+                                    else
+                                    {
+                                        <div class="alert alert-light border mb-4">
+                                            Bu tur için hakem ataması yapılmamış.
+                                        </div>
+                                    }
+
+                                    <!-- HAKEM RAPORLARI -->
+                                    <div class="section-subtitle">Hakem Raporları</div>
+
+                                    @if (roundReviews.Any())
+                                    {
+                                        <div class="accordion" id="reviewAccordionRound@round">
+                                            @foreach (var review in roundReviews)
+                                            {
+                                                var reviewCollapseId = $"reviewCollapse_{round}_{review.Id}";
+
+                                                <div class="accordion-item review-accordion-item">
+                                                    <h2 class="accordion-header">
+                                                        <button class="accordion-button collapsed"
+                                                                type="button"
+                                                                data-bs-toggle="collapse"
+                                                                data-bs-target="#@reviewCollapseId">
+                                                            <div class="review-accordion-title">
+                                                                <strong>
+                                                                    @(review.Reviewer?.FullName ?? review.Reviewer?.UserName ?? "Hakem")
+                                                                </strong>
+
+                                                                <span class="badge rounded-pill text-bg-light border ms-2">
+                                                                    @(
+                                                                        string.IsNullOrWhiteSpace(review.Decision)
+                                                                            ? "Karar Yok"
+                                                                            : review.Decision == "Accept"
+                                                                                ? "Kabul"
+                                                                                : review.Decision == "Minor Revision"
+                                                                                    ? "Küçük Revizyon"
+                                                                                    : review.Decision == "Major Revision"
+                                                                                        ? "Büyük Revizyon"
+                                                                                        : review.Decision == "Reject"
+                                                                                            ? "Ret"
+                                                                                            : review.Decision
+                                                                    )
+                                                                </span>
+
+                                                                <span class="text-muted small ms-2">
+                                                                    @(review.SubmittedAt?.ToLocalTime().ToString("dd.MM.yyyy HH:mm") ?? "-")
+                                                                </span>
+                                                            </div>
+                                                        </button>
+                                                    </h2>
+
+                                                    <div id="@reviewCollapseId"
+                                                         class="accordion-collapse collapse"
+                                                         data-bs-parent="#reviewAccordionRound@round">
+                                                        <div class="accordion-body">
+
+                                                            <div class="row g-3 mb-3">
+                                                                @if (review.OverallScore.HasValue)
+                                                                {
+                                                                    <div class="col-md-3">
+                                                                        <div class="metric-box">
+                                                                            <div class="metric-title">Genel Puan</div>
+                                                                            <div class="metric-value">@review.OverallScore</div>
+                                                                        </div>
+                                                                    </div>
+                                                                }
+
+                                                                @if (!string.IsNullOrWhiteSpace(review.Decision))
+                                                                {
+                                                                    <div class="col-md-3">
+                                                                        <div class="metric-box">
+                                                                            <div class="metric-title">Hakem Kararı</div>
+                                                                            <div class="metric-value small-value">
+                                                                                @(
+                                                                                    review.Decision == "Accept"
+                                                                                        ? "Kabul"
+                                                                                        : review.Decision == "Minor Revision"
+                                                                                            ? "Küçük Revizyon"
+                                                                                            : review.Decision == "Major Revision"
+                                                                                                ? "Büyük Revizyon"
+                                                                                                : review.Decision == "Reject"
+                                                                                                    ? "Ret"
+                                                                                                    : review.Decision
+                                                                                )
+                                                                            </div>
+                                                                        </div>
+                                                                    </div>
+                                                                }
+
+                                                                @if (review.SubmittedAt.HasValue)
+                                                                {
+                                                                    <div class="col-md-3">
+                                                                        <div class="metric-box">
+                                                                            <div class="metric-title">Gönderim Tarihi</div>
+                                                                            <div class="metric-value small-value">
+                                                                                @review.SubmittedAt.Value.ToLocalTime().ToString("dd.MM.yyyy")
+                                                                            </div>
+                                                                        </div>
+                                                                    </div>
+                                                                }
+                                                            </div>
+
+                                                            @if (!string.IsNullOrWhiteSpace(review.CommentToAuthor))
+                                                            {
+                                                                <div class="mb-3">
+                                                                    <div class="section-title">Yazara Yorum</div>
+                                                                    <div class="content-box">@review.CommentToAuthor</div>
+                                                                </div>
+                                                            }
+
+                                                            @if (!string.IsNullOrWhiteSpace(review.CommentToEditor))
+                                                            {
+                                                                <div class="mb-3">
+                                                                    <div class="section-title">Editöre Gizli Yorum</div>
+                                                                    <div class="content-box">@review.CommentToEditor</div>
+                                                                </div>
+                                                            }
+
+                                                            @if (!string.IsNullOrWhiteSpace(review.Strengths))
+                                                            {
+                                                                <div class="mb-3">
+                                                                    <div class="section-title">Güçlü Yönler</div>
+                                                                    <div class="content-box">@review.Strengths</div>
+                                                                </div>
+                                                            }
+
+                                                            @if (!string.IsNullOrWhiteSpace(review.Weaknesses))
+                                                            {
+                                                                <div class="mb-3">
+                                                                    <div class="section-title">Geliştirilmesi Gereken Yönler</div>
+                                                                    <div class="content-box">@review.Weaknesses</div>
+                                                                </div>
+                                                            }
+
+                                                            @if (!string.IsNullOrWhiteSpace(review.ReviewerAttachmentPath))
+                                                            {
+                                                                <div class="mb-3">
+                                                                    <div class="section-title">Hakem Ek Dosyası</div>
+                                                                    <a href="@Url.Content(review.ReviewerAttachmentPath)"
+                                                                       target="_blank"
+                                                                       class="btn btn-sm btn-outline-primary">
+                                                                        @(review.ReviewerAttachmentOriginalFileName ?? "Hakem ek dosyasını aç")
+                                                                    </a>
+                                                                </div>
+                                                            }
+
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            }
+                                        </div>
+                                    }
+                                    else
+                                    {
+                                        <div class="alert alert-info mb-0">
+                                            Bu tura ait hakem raporu henüz gönderilmedi.
+                                        </div>
+                                    }
+
                                 </div>
-                            }
-
-                            <div class="fw-semibold mb-2">Hakem Yorumu</div>
-                            <div class="bg-white border rounded-3 p-3 small review-box">
-                                @(string.IsNullOrWhiteSpace(review.Comments) ? "Henüz yorum girilmemiş." : review.Comments)
                             </div>
                         </div>
+                    }
+                </div>
+            </div>
+        </div>
+
+        <!-- SAĞ KARAR KOLONU -->
+        <div class="review-side">
+            <div class="decision-actions-card mb-3">
+                <h5 class="fw-bold mb-3">@Model.CurrentReviewRound. Tur Hakem Atama</h5>
+
+                @if ((Model.Status == SubmissionStatus.AlanEditorunde ||
+                  Model.Status == SubmissionStatus.HakemAtamasiBekliyor ||
+                  Model.Status == SubmissionStatus.HakemDegerlendirmesinde ||
+                  Model.Status == SubmissionStatus.RevizyonYuklendi) &&
+                 (!allReviewsCompleted || canAssignAdditionalReviewer))
+                {
+                    if (reviewers.Any())
+                    {
+                        <form asp-controller="Submission"
+                              asp-action="AssignReviewerToCurrentRound"
+                              method="post">
+                            @Html.AntiForgeryToken()
+
+                            <input type="hidden" name="submissionId" value="@Model.Id" />
+
+                            <div class="mb-3">
+                                <label class="form-label fw-semibold">Hakem Seç</label>
+                                <select name="reviewerId" class="form-select" required>
+                                    <option value="">Hakem seçiniz</option>
+
+                                    @foreach (var reviewer in reviewers)
+                                    {
+                                        <option value="@reviewer.Id">
+                                            @(reviewer.FullName ?? reviewer.UserName ?? reviewer.Email)
+                                        </option>
+                                    }
+                                </select>
+                            </div>
+
+                            <button type="submit"
+                                    class="btn btn-outline-primary w-100 fw-bold">
+                                @(canAssignAdditionalReviewer ? "Ek / 3. Hakem Ata" : $"{Model.CurrentReviewRound}. Tur İçin Hakem Ata")
+                            </button>
+                        </form>
+                    }
+                    else
+                    {
+                        <div class="alert alert-warning mb-0">
+                            Sistemde hakem rolüne sahip kullanıcı bulunamadı.
+                        </div>
+                    }
+                }
+                else
+                {
+                    <div class="alert alert-light border mb-0">
+                        @if (allReviewsCompleted && !hasConflictingReviews)
+                        {
+                            <span>Bu turdaki hakem değerlendirmeleri tamamlandı. Artık karar aşamasındasınız.</span>
+                        }
+                        else
+                        {
+                            <span>Bu durumda hakem ataması yapılamaz.</span>
+                        }
+                    </div>
+                }
+
+                @{
+                    var currentRoundReviewers = allAssignments
+                        .Where(sr => sr.ReviewRound == Model.CurrentReviewRound)
+                        .OrderByDescending(sr => sr.AssignedAt)
+                        .ToList();
+                }
+
+                @if (currentRoundReviewers.Any())
+                {
+                    <div class="mt-4">
+                        <div class="fw-bold mb-2">Bu Turdaki Hakemler</div>
+
+                        <table class="table table-sm align-middle">
+                            <thead>
+                                <tr>
+                                    <th>Hakem</th>
+                                    <th>Durum</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var sr in currentRoundReviewers)
+                                {
+                                    <tr>
+                                        <td>
+                                            @(sr.Reviewer?.FullName ?? sr.Reviewer?.UserName ?? sr.Reviewer?.Email ?? "-")
+                                        </td>
+                                        <td>
+                                            <span class="badge @StatusDisplayHelper.GetReviewerAssignmentBadgeClass(sr.Status)">
+                                                @StatusDisplayHelper.GetReviewerAssignmentStatusText(sr.Status)
+                                            </span>
+                                        </td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
                     </div>
                 }
             </div>
+
+            <div class="decision-actions-card">
+                <h5 class="fw-bold mb-3">Editör Kararı</h5>
+
+                <div class="decision-current-info mb-3">
+                    <div>
+                        <strong>Mevcut Durum:</strong>
+                        <span>@StatusDisplayHelper.GetSubmissionStatusText(Model.Status)</span>
+                    </div>
+
+                    <div>
+                        <strong>Aktif Tur:</strong>
+                        <span>@Model.CurrentReviewRound. Tur</span>
+                    </div>
+
+                    @if (!string.IsNullOrWhiteSpace(Model.DecisionNote))
+                    {
+                        <div class="mt-2 small text-muted">
+                            <strong>Son Editör Notu:</strong>
+                            <div>@Model.DecisionNote</div>
+                        </div>
+                    }
+                </div>
+
+                @if (!allReviewsCompleted &&
+                     (Model.Status == SubmissionStatus.HakemDegerlendirmesinde ||
+                      Model.Status == SubmissionStatus.HakemAtamasiBekliyor))
+                {
+                    <div class="alert alert-warning border-0 rounded-4">
+                        Hakem değerlendirmeleri tamamlanmadan karar veriyorsunuz. Gerekirse bekleyebilirsiniz.
+                    </div>
+                }
+
+                <form asp-action="EditorDecision" method="post">
+                    @Html.AntiForgeryToken()
+
+                    <input type="hidden" name="id" value="@Model.Id" />
+
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Yazara Not</label>
+                        <textarea name="decisionNote"
+                                  class="form-control decision-note"
+                                  rows="6"
+                                  placeholder="Yazara gönderilecek karar notu">@Model.DecisionNote</textarea>
+                    </div>
+
+                    @if (isFinalDecisionGiven)
+                    {
+                        <div class="alert alert-light border rounded-4 mb-3">
+                            Bu gönderi için nihai karar verilmiştir. Karar butonları kapalıdır.
+                        </div>
+
+                        <button type="button" class="btn btn-warning w-100 mb-2" disabled>
+                            Revizyon İste
+                        </button>
+
+                        <button type="button" class="btn btn-primary w-100 mb-2" disabled>
+                            Gönderiyi Kabul Et
+                        </button>
+
+                        <button type="button" class="btn btn-outline-danger w-100" disabled>
+                            Gönderiyi Reddet
+                        </button>
+                    }
+                    else
+                    {
+                        <button type="submit"
+                                name="decision"
+                                value="revision"
+                                class="btn btn-warning w-100 mb-2 fw-bold">
+                            Revizyon İste
+                        </button>
+
+                        <button type="submit"
+                                name="decision"
+                                value="accept"
+                                class="btn btn-primary w-100 mb-2 fw-bold">
+                            Gönderiyi Kabul Et
+                        </button>
+
+                        <button type="submit"
+                                name="decision"
+                                value="reject"
+                                class="btn btn-outline-danger w-100 fw-bold">
+                            Gönderiyi Reddet
+                        </button>
+                    }
+                </form>
+            </div>
+
+            <a asp-controller="Submission"
+               asp-action="Detail"
+               asp-route-id="@Model.Id"
+               class="btn btn-outline-dark w-100 mt-3">
+                Makale Detayı
+            </a>
+        </div>
+    </div>
+</div>
+
+<style>
+    .disabled-tab {
+        opacity: .55;
+        pointer-events: none;
+        cursor: not-allowed;
+    }
+
+    .btn-warning {
+        color: #111827;
+    }
+
+    .editor-decision-page {
+        width: 100%;
+        max-width: 1600px;
+        margin: 0 auto;
+        padding: 0 1rem;
+    }
+
+    .decision-current-info {
+        background: #f8fafc;
+        border: 1px solid #e5e7eb;
+        border-radius: .85rem;
+        padding: .9rem 1rem;
+        font-size: .92rem;
+    }
+
+    .submission-header {
+        background: #fff;
+        border-radius: 1rem;
+        padding: 1.75rem 2rem;
+        display: flex;
+        justify-content: space-between;
+        gap: 1rem;
+        align-items: flex-start;
+        box-shadow: 0 2px 8px rgba(0,0,0,.04);
+        width: 100%;
+    }
+
+    .submission-breadcrumb {
+        display: flex;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: .6rem;
+        color: #1f2937;
+        font-size: 1rem;
+    }
+
+    .workflow-panel {
+        background: #fff;
+        border-radius: 1rem;
+        overflow: hidden;
+        box-shadow: 0 2px 8px rgba(0,0,0,.04);
+    }
+
+    .workflow-main-tabs {
+        display: flex;
+        border-bottom: 1px solid #dfe3e8;
+        background: #fff;
+        overflow-x: auto;
+    }
+
+    .workflow-main-tab {
+        padding: 1.2rem 1.75rem;
+        font-weight: 800;
+        color: #0b5e86;
+        text-decoration: none;
+        border-right: 1px solid #edf0f2;
+        white-space: nowrap;
+    }
+
+        .workflow-main-tab:hover {
+            background: #f8fafc;
+            color: #084766;
         }
-    </div>
-</div>
 
-<div class="card border-0 shadow-sm">
-    <div class="card-header bg-white border-0 py-3">
-        <h5 class="mb-0 fw-semibold">Nihai Editör Kararı</h5>
-    </div>
-    <div class="card-body">
-        <form asp-action="EditorDecision" method="post">
-            @Html.AntiForgeryToken()
-            <input type="hidden" asp-for="SubmissionId" />
-            <input type="hidden" asp-for="Title" />
-            <input type="hidden" asp-for="SuggestedDecision" />
-            <input type="hidden" asp-for="TotalReviewerCount" />
-            <input type="hidden" asp-for="CompletedReviewerCount" />
+        .workflow-main-tab.active {
+            color: #6b7280;
+            border-top: 4px solid #c2185b;
+            background: #fff;
+        }
 
-            <div asp-validation-summary="ModelOnly" class="text-danger mb-3"></div>
+    .workflow-round-tabs {
+        display: flex;
+        gap: 0;
+        padding: 1.25rem 1.25rem 0 1.25rem;
+        border-bottom: 1px solid #e5e7eb;
+        overflow-x: auto;
+    }
 
-            <div class="mb-4">
-                <label asp-for="Status" class="form-label fw-semibold">Editör Kararı</label>
-                <select asp-for="Status" class="form-select rounded-4">
-                    <option value="@SubmissionStatus.Submitted">Submitted</option>
-                    <option value="@SubmissionStatus.InReview">Under Review</option>
-                    <option value="@SubmissionStatus.RevisionRequired">Revision Required</option>
-                    <option value="@SubmissionStatus.Accepted">Accepted</option>
-                    <option value="@SubmissionStatus.Rejected">Rejected</option>
-                </select>
-                <span asp-validation-for="Status" class="text-danger"></span>
-            </div>
+    .workflow-round-tab {
+        padding: 1rem 1.5rem;
+        text-decoration: none;
+        font-weight: 800;
+        color: #0b5e86;
+        border: 1px solid transparent;
+        border-bottom: none;
+        white-space: nowrap;
+    }
 
-            <div class="mb-4">
-                <label asp-for="DecisionNote" class="form-label fw-semibold">Karar Notu</label>
-                <textarea asp-for="DecisionNote" rows="8" class="form-control rounded-4" placeholder="Yazara veya sistem içine özel editör notu yazabilirsiniz..."></textarea>
-                <span asp-validation-for="DecisionNote" class="text-danger"></span>
-            </div>
+        .workflow-round-tab.active {
+            color: #6b7280;
+            border-color: #d1d5db;
+            border-top: 4px solid #0b6f9d;
+            background: #fff;
+        }
 
-            <div class="d-flex gap-2">
-                <button type="submit" class="btn btn-primary rounded-pill px-4">
-                    <i class="bi bi-check2-circle me-1"></i> Kararı Kaydet
-                </button>
+        .workflow-round-tab.new-round {
+            color: #0b5e86;
+        }
 
-                <a asp-action="Detail" asp-route-id="@Model.SubmissionId" class="btn btn-light border rounded-pill px-4">
-                    Vazgeç
-                </a>
-            </div>
-        </form>
-    </div>
-</div>
+    .review-layout {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) 340px;
+        gap: 1.5rem;
+        align-items: start;
+    }
 
-@section Scripts {
-    <partial name="_ValidationScriptsPartial" />
-    <style>
-        .card { border-radius: 18px; }
-        .review-box { white-space: pre-line; line-height: 1.65; min-height: 110px; }
-    </style>
-}
+    .review-main {
+        min-width: 0;
+    }
+
+    .review-side {
+        position: sticky;
+        top: 1.5rem;
+        align-self: start;
+    }
+
+    .round-status-box {
+        border: 1px solid #d1d5db;
+        border-left: 10px solid #0b6f9d;
+        background: #fff;
+        padding: 1.5rem;
+        border-radius: .75rem;
+        box-shadow: 0 2px 8px rgba(0,0,0,.04);
+    }
+
+    .round-status-title {
+        font-weight: 800;
+        font-size: 1.1rem;
+        margin-bottom: .4rem;
+    }
+
+    .decision-actions-card {
+        background: #fff;
+        border: 1px solid #e5e7eb;
+        border-radius: 1rem;
+        padding: 1.25rem;
+        box-shadow: 0 2px 8px rgba(0,0,0,.04);
+    }
+
+    .metric-box {
+        background: #f8fafc;
+        border: 1px solid #e5e7eb;
+        border-radius: .9rem;
+        padding: 1rem;
+        height: 100%;
+    }
+
+    .metric-title {
+        font-size: .8rem;
+        color: #6b7280;
+        font-weight: 600;
+        margin-bottom: .35rem;
+        text-transform: uppercase;
+        letter-spacing: .03em;
+    }
+
+    .metric-value {
+        font-size: 1.4rem;
+        font-weight: 700;
+        color: #111827;
+    }
+
+        .metric-value.small-value {
+            font-size: 1rem;
+            font-weight: 600;
+        }
+
+    .section-title {
+        font-size: .95rem;
+        font-weight: 700;
+        color: #111827;
+        margin-bottom: .5rem;
+    }
+
+    .content-box {
+        background: #f9fafb;
+        border: 1px solid #e5e7eb;
+        border-radius: .9rem;
+        padding: 1rem 1.1rem;
+        line-height: 1.7;
+        color: #1f2937;
+        white-space: pre-wrap;
+    }
+
+    .round-card {
+        border: 1px solid #e5e7eb;
+        border-radius: 1rem;
+        overflow: hidden;
+        background: #fff;
+    }
+
+        .round-card.current-round {
+            border-color: #0b6f9d;
+        }
+
+    .round-card-header {
+        width: 100%;
+        border: none;
+        background: #f8fafc;
+        padding: 1rem 1.25rem;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        text-align: left;
+        cursor: pointer;
+    }
+
+        .round-card-header:hover {
+            background: #eef6fb;
+        }
+
+    .round-title {
+        font-size: 1.1rem;
+        font-weight: 800;
+        color: #111827;
+    }
+
+    .round-summary {
+        font-size: .9rem;
+        color: #6b7280;
+        margin-top: .25rem;
+    }
+
+    .round-toggle-text {
+        font-size: .85rem;
+        color: #0b5e86;
+        font-weight: 700;
+    }
+
+    .round-card-body {
+        padding: 1.25rem;
+        border-top: 1px solid #e5e7eb;
+    }
+
+    .round-status-mini {
+        background: #f9fafb;
+        border-left: 6px solid #0b6f9d;
+        border-radius: .75rem;
+        padding: 1rem 1.1rem;
+    }
+
+    .section-subtitle {
+        font-size: 1rem;
+        font-weight: 800;
+        color: #111827;
+        margin: 1rem 0 .75rem 0;
+    }
+
+    .review-accordion-item {
+        border: 1px solid #e5e7eb;
+        border-radius: .85rem;
+        overflow: hidden;
+        margin-bottom: .75rem;
+    }
+
+        .review-accordion-item .accordion-button {
+            background: #fff;
+            font-weight: 600;
+        }
+
+            .review-accordion-item .accordion-button:not(.collapsed) {
+                background: #eef6fb;
+                color: #111827;
+                box-shadow: none;
+            }
+
+    .review-accordion-title {
+        display: flex;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: .35rem;
+    }
+
+    .decision-note {
+        min-height: 150px;
+        resize: vertical;
+    }
+
+    .card {
+        border-radius: 1rem;
+    }
+
+    .form-select,
+    .form-control {
+        border-radius: .85rem;
+    }
+
+    @@media (max-width: 1300px) {
+        .review-layout {
+            grid-template-columns: 1fr;
+        }
+
+        .review-side {
+            position: static;
+        }
+    }
+
+    @@media (max-width: 768px) {
+        .submission-header {
+            flex-direction: column;
+        }
+
+        .workflow-main-tab,
+        .workflow-round-tab {
+            padding: .9rem 1rem;
+        }
+
+        .table {
+            font-size: .95rem;
+        }
+
+        .card-header h4 {
+            font-size: 1.35rem;
+        }
+
+        .workflow-main-tab,
+        .workflow-round-tab {
+            font-size: .95rem;
+        }
+
+        .workflow-round-tabs form {
+            margin: 0;
+        }
+
+        .workflow-round-tabs button.workflow-round-tab {
+            cursor: pointer;
+        }
+
+            .workflow-round-tabs button.workflow-round-tab:hover {
+                background: #f8fafc !important;
+            }
+    }
+</style>

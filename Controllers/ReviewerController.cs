@@ -32,10 +32,21 @@ namespace MyDergiApp.Controllers
             if (user == null)
                 return Challenge();
 
-            var submissionIds = await _context.SubmissionReviewers
-                .Where(sr => sr.ReviewerId == user.Id)
-                .Select(sr => sr.SubmissionId)
+            var activeAssignments = await _context.SubmissionReviewers
+                .Include(sr => sr.Submission)
+                .Where(sr =>
+                    sr.ReviewerId == user.Id &&
+                    sr.Submission != null &&
+                    sr.ReviewRound == sr.Submission.CurrentReviewRound &&
+                    sr.Status != ReviewerAssignmentStatus.Cancelled &&
+                    sr.Status != ReviewerAssignmentStatus.Declined)
+                .OrderByDescending(sr => sr.AssignedAt)
                 .ToListAsync();
+
+            var submissionIds = activeAssignments
+                .Select(sr => sr.SubmissionId)
+                .Distinct()
+                .ToList();
 
             var submissions = await _context.Submissions
                 .Include(s => s.Reviews)
@@ -43,21 +54,26 @@ namespace MyDergiApp.Controllers
                 .OrderByDescending(s => s.CreatedAt)
                 .ToListAsync();
 
+            ViewBag.TotalCount = activeAssignments.Count;
+
+            ViewBag.CompletedCount = activeAssignments
+                .Count(x => x.Status == ReviewerAssignmentStatus.Completed);
+
+            ViewBag.DraftCount = activeAssignments
+                .Count(x => x.Status == ReviewerAssignmentStatus.InReview);
+
+            ViewBag.PendingCount = activeAssignments
+                .Count(x => x.Status == ReviewerAssignmentStatus.Assigned);
+
             return View(submissions);
         }
 
         [HttpGet]
-        public async Task<IActionResult> Review(int id)
+        public async Task<IActionResult> Review(int id, int? round = null)
         {
             var user = await _userManager.GetUserAsync(User);
             if (user == null)
                 return Challenge();
-
-            var isAssigned = await _context.SubmissionReviewers
-                .AnyAsync(sr => sr.SubmissionId == id && sr.ReviewerId == user.Id);
-
-            if (!isAssigned)
-                return Forbid();
 
             var submission = await _context.Submissions
                 .Include(s => s.Reviews)
@@ -66,20 +82,59 @@ namespace MyDergiApp.Controllers
             if (submission == null)
                 return NotFound();
 
-            var existingReview = submission.Reviews?
-                .FirstOrDefault(r => r.ReviewerId == user.Id);
+            var targetRound = round ?? submission.CurrentReviewRound;
 
             var assignment = await _context.SubmissionReviewers
-                .FirstOrDefaultAsync(sr => sr.SubmissionId == id && sr.ReviewerId == user.Id);
+                .FirstOrDefaultAsync(x =>
+                    x.SubmissionId == id &&
+                    x.ReviewerId == user.Id &&
+                    x.ReviewRound == targetRound);
 
-            if (assignment != null && assignment.Status == ReviewStatus.Pending)
+            if (assignment == null)
             {
-                assignment.Status = ReviewStatus.InReview;
+                TempData["Error"] = "Bu makale için ilgili turda hakem atamanız bulunmamaktadır.";
+                return RedirectToAction(nameof(Index));
+            }
+
+            if (assignment.Status == ReviewerAssignmentStatus.Cancelled)
+            {
+                TempData["Error"] = "Bu hakem ataması editör tarafından iptal edilmiştir.";
+                return RedirectToAction(nameof(Index));
+            }
+
+            if (assignment.Status == ReviewerAssignmentStatus.Declined)
+            {
+                TempData["Error"] = "Bu hakem ataması reddedilmiştir.";
+                return RedirectToAction(nameof(Index));
+            }
+
+            var isPastRound = targetRound < submission.CurrentReviewRound;
+            var isReadOnly = assignment.Status == ReviewerAssignmentStatus.Completed || isPastRound;
+
+            if (!isReadOnly && assignment.Status == ReviewerAssignmentStatus.Assigned)
+            {
+                assignment.Status = ReviewerAssignmentStatus.InReview;
                 await _context.SaveChangesAsync();
             }
 
+            var existingReview = submission.Reviews?
+                .FirstOrDefault(r =>
+                    r.ReviewerId == user.Id &&
+                    r.ReviewRound == targetRound);
+            var reviewerAttachmentFile = await _context.SubmissionFiles
+                .Where(f =>
+                    f.SubmissionId == id &&
+                    f.FileType == "HakemEkDosyasi" &&
+                    f.ReviewRound == targetRound &&
+                    f.UploadedByUserId == user.Id)
+                .OrderByDescending(f => f.UploadedAt)
+                .FirstOrDefaultAsync();
+
+            ViewBag.ReviewerAttachmentFile = reviewerAttachmentFile;
             ViewBag.ExistingReview = existingReview;
             ViewBag.Assignment = assignment;
+            ViewBag.CurrentReviewRound = targetRound;
+            ViewBag.IsReadOnly = isReadOnly;
 
             return View(submission);
         }
@@ -102,17 +157,14 @@ namespace MyDergiApp.Controllers
             string? ethicalConcerns,
             string? decision,
             string? scopeFit,
-            string submitType)
+            string submitType,
+            IFormFile? reviewerAttachment,
+            string? reviewerAttachmentNote,
+            bool sendAttachmentToAuthor)
         {
             var user = await _userManager.GetUserAsync(User);
             if (user == null)
                 return Challenge();
-
-            var isAssigned = await _context.SubmissionReviewers
-                .AnyAsync(sr => sr.SubmissionId == submissionId && sr.ReviewerId == user.Id);
-
-            if (!isAssigned)
-                return Forbid();
 
             var submission = await _context.Submissions
                 .Include(s => s.Reviews)
@@ -121,8 +173,41 @@ namespace MyDergiApp.Controllers
             if (submission == null)
                 return NotFound();
 
+            var assignment = await _context.SubmissionReviewers
+                .FirstOrDefaultAsync(x =>
+                    x.SubmissionId == submissionId &&
+                    x.ReviewerId == user.Id &&
+                    x.ReviewRound == submission.CurrentReviewRound);
+
+            if (assignment == null)
+            {
+                TempData["Error"] = "Bu makale için aktif hakem atamanız bulunmamaktadır.";
+                return RedirectToAction(nameof(Index));
+            }
+
+            if (assignment.Status == ReviewerAssignmentStatus.Cancelled)
+            {
+                TempData["Error"] = "Bu hakem ataması editör tarafından iptal edilmiştir. Değerlendirme gönderilemez.";
+                return RedirectToAction(nameof(Index));
+            }
+
+            if (assignment.Status == ReviewerAssignmentStatus.Declined)
+            {
+                TempData["Error"] = "Bu hakem ataması reddedilmiştir. Değerlendirme gönderilemez.";
+                return RedirectToAction(nameof(Index));
+            }
+
+            if (assignment.Status == ReviewerAssignmentStatus.Completed)
+            {
+                TempData["Error"] = "Bu değerlendirme nihai olarak gönderilmiştir. Artık düzenleme yapılamaz.";
+                return RedirectToAction(nameof(Index));
+            }
+
             var review = await _context.Reviews
-                .FirstOrDefaultAsync(r => r.SubmissionId == submissionId && r.ReviewerId == user.Id);
+                .FirstOrDefaultAsync(r =>
+                    r.SubmissionId == submissionId &&
+                    r.ReviewerId == user.Id &&
+                    r.ReviewRound == submission.CurrentReviewRound);
 
             if (submitType == "submit")
             {
@@ -151,6 +236,7 @@ namespace MyDergiApp.Controllers
                 {
                     SubmissionId = submissionId,
                     ReviewerId = user.Id,
+                    ReviewRound = submission.CurrentReviewRound,
                     CreatedAt = DateTime.UtcNow
                 };
 
@@ -175,18 +261,15 @@ namespace MyDergiApp.Controllers
             review.Decision = string.IsNullOrWhiteSpace(decision) ? null : decision.Trim();
             review.UpdatedAt = DateTime.UtcNow;
 
-            var assignment = await _context.SubmissionReviewers
-                .FirstOrDefaultAsync(x => x.SubmissionId == submissionId && x.ReviewerId == user.Id);
+            review.ReviewerAttachmentNote = reviewerAttachmentNote?.Trim();
+            review.SendAttachmentToAuthor = sendAttachmentToAuthor;
 
             if (submitType == "draft")
             {
                 review.IsDraft = true;
 
-                if (assignment != null)
-                {
-                    assignment.Status = ReviewStatus.InReview;
-                    assignment.ReviewNote = review.Comments ?? string.Empty;
-                }
+                assignment.Status = ReviewerAssignmentStatus.InReview;
+                assignment.ReviewNote = review.Comments ?? string.Empty;
 
                 TempData["Success"] = "Taslak değerlendirme kaydedildi.";
             }
@@ -195,12 +278,9 @@ namespace MyDergiApp.Controllers
                 review.IsDraft = false;
                 review.SubmittedAt = DateTime.UtcNow;
 
-                if (assignment != null)
-                {
-                    assignment.Status = ReviewStatus.Completed;
-                    assignment.ReviewNote = review.Comments ?? string.Empty;
-                    assignment.CompletedAt = DateTime.UtcNow;
-                }
+                assignment.Status = ReviewerAssignmentStatus.Completed;
+                assignment.ReviewNote = review.Comments ?? string.Empty;
+                assignment.CompletedAt = DateTime.UtcNow;
 
                 TempData["Success"] = "Hakem değerlendirmesi başarıyla gönderildi.";
 
@@ -220,10 +300,66 @@ namespace MyDergiApp.Controllers
                 }
                 catch
                 {
+                    // Mail gönderilemese bile değerlendirme kaydı bozulmasın.
                 }
             }
 
+            if (reviewerAttachment != null && reviewerAttachment.Length > 0)
+            {
+                var allowedExtensions = new[]
+                {
+                    ".pdf", ".doc", ".docx", ".jpg", ".jpeg", ".png"
+                };
+
+                var extension = Path.GetExtension(reviewerAttachment.FileName).ToLowerInvariant();
+
+                if (!allowedExtensions.Contains(extension))
+                {
+                    TempData["Error"] = "Sadece PDF, DOC, DOCX, JPG, JPEG veya PNG dosyası yükleyebilirsiniz.";
+                    return RedirectToAction(nameof(Review), new { id = submissionId });
+                }
+
+                var root = Path.Combine(
+                    Directory.GetCurrentDirectory(),
+                    "wwwroot",
+                    "uploads",
+                    "submissions",
+                    "reviewer-files"
+                );
+
+                if (!Directory.Exists(root))
+                    Directory.CreateDirectory(root);
+
+                var uniqueFileName =
+                    $"reviewer_{submissionId}_{submission.CurrentReviewRound}_{Guid.NewGuid()}{extension}";
+
+                var fullPath = Path.Combine(root, uniqueFileName);
+
+                using (var stream = new FileStream(fullPath, FileMode.Create))
+                {
+                    await reviewerAttachment.CopyToAsync(stream);
+                }
+
+                var dbPath = $"/uploads/submissions/reviewer-files/{uniqueFileName}";
+
+                review.ReviewerAttachmentPath = dbPath;
+                review.ReviewerAttachmentOriginalFileName = reviewerAttachment.FileName;
+
+                _context.SubmissionFiles.Add(new SubmissionFile
+                {
+                    SubmissionId = submissionId,
+                    FileType = "HakemEkDosyasi",
+                    OriginalFileName = reviewerAttachment.FileName,
+                    StoredFilePath = dbPath,
+                    FileSize = reviewerAttachment.Length,
+                    UploadedByUserId = user.Id,
+                    UploadedAt = DateTime.UtcNow,
+                    ReviewRound = submission.CurrentReviewRound
+                });
+            }
+
             await _context.SaveChangesAsync();
+
             return RedirectToAction(nameof(Index));
         }
     }

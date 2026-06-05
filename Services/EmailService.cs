@@ -13,14 +13,50 @@ public class EmailService
 
     public async Task SendEmailAsync(string to, string subject, string body)
     {
-        var mail = new MailMessage();
+        using var mail = new MailMessage();
         mail.From = new MailAddress(_smtp.FromEmail, _smtp.FromName);
         mail.To.Add(to);
         mail.Subject = subject;
         mail.Body = body;
         mail.IsBodyHtml = true;
 
-        var smtpClient = new SmtpClient(_smtp.Host, _smtp.Port)
+        using var smtpClient = new SmtpClient(_smtp.Host, _smtp.Port)
+        {
+            Credentials = new NetworkCredential(_smtp.UserName, _smtp.Password),
+            EnableSsl = _smtp.EnableSsl
+        };
+
+        await smtpClient.SendMailAsync(mail);
+    }
+
+    public async Task SendEmailWithAttachmentsAsync(
+        string to,
+        string subject,
+        string body,
+        List<string>? attachmentPaths = null)
+    {
+        using var mail = new MailMessage();
+        mail.From = new MailAddress(_smtp.FromEmail, _smtp.FromName);
+        mail.To.Add(to);
+        mail.Subject = subject;
+        mail.Body = body;
+        mail.IsBodyHtml = true;
+
+        if (attachmentPaths != null)
+        {
+            foreach (var relativePath in attachmentPaths.Where(x => !string.IsNullOrWhiteSpace(x)))
+            {
+                var cleanRelative = relativePath!.TrimStart('/').Replace("/", Path.DirectorySeparatorChar.ToString());
+                var fullPath = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", cleanRelative);
+
+                if (System.IO.File.Exists(fullPath))
+                {
+                    mail.Attachments.Add(new Attachment(fullPath));
+                }
+            }
+        }
+
+        using var smtpClient = new SmtpClient(_smtp.Host, _smtp.Port)
         {
             Credentials = new NetworkCredential(_smtp.UserName, _smtp.Password),
             EnableSsl = _smtp.EnableSsl

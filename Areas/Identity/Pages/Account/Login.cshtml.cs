@@ -54,14 +54,20 @@ namespace MyDergiApp.Areas.Identity.Pages.Account
         {
             if (_signInManager.IsSignedIn(User))
             {
-                if (User.IsInRole("Admin") || User.IsInRole("Editor"))
+                if (User.IsInRole("Admin"))
                     return LocalRedirect("/Admin");
 
-                if (User.IsInRole("Reviewer"))
-                    return LocalRedirect("/Reviewer");
+                if (User.IsInRole("ChiefEditor"))
+                    return LocalRedirect("/Submission/OnKontrolListesi");
+
+                if (User.IsInRole("Editor"))
+                    return LocalRedirect("/Submission/EditorDashboard");
 
                 if (User.IsInRole("Author"))
-                    return LocalRedirect("/Author");
+                    return LocalRedirect("/Submission/Makalelerim");
+
+                if (User.IsInRole("Reviewer"))
+                    return LocalRedirect("/Submission/MyReviews");
 
                 return LocalRedirect("/");
             }
@@ -108,14 +114,20 @@ namespace MyDergiApp.Areas.Identity.Pages.Account
                 {
                     var roles = await _userManager.GetRolesAsync(user);
 
-                    if (roles.Contains("Admin") || roles.Contains("Editor"))
+                    if (roles.Contains("Admin"))
                         return LocalRedirect("/Admin");
 
-                    if (roles.Contains("Reviewer"))
-                        return LocalRedirect("/Reviewer");
+                    if (roles.Contains("ChiefEditor"))
+                        return LocalRedirect("/Submission/OnKontrolListesi");
+
+                    if (roles.Contains("Editor"))
+                        return LocalRedirect("/Submission/EditorDashboard");
 
                     if (roles.Contains("Author"))
-                        return LocalRedirect("/Author");
+                        return LocalRedirect("/Submission/Makalelerim");
+
+                    if (roles.Contains("Reviewer"))
+                        return LocalRedirect("/Submission/MyReviews");
                 }
 
                 return LocalRedirect("/");

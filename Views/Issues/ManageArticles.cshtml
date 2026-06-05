@@ -1,0 +1,129 @@
+@model MyDergiApp.Models.Issue
+@using MyDergiApp.Models
+
+@{
+    ViewData["Title"] = "Sayı Makaleleri";
+    var acceptedSubmissions = ViewBag.AcceptedSubmissions as List<Submission> ?? new List<Submission>();
+}
+
+<div class="card border-0 shadow-sm mb-4">
+    <div class="card-header bg-white border-0 py-3 d-flex justify-content-between align-items-center">
+        <div>
+            <h3 class="mb-0 fw-bold">Sayı Makaleleri</h3>
+            <div class="text-muted">
+                @Model.Year · Cilt @Model.Volume · Sayı @Model.Number
+            </div>
+        </div>
+
+        <a asp-action="Index" class="btn btn-secondary">
+            Sayılara Dön
+        </a>
+    </div>
+
+    <div class="card-body">
+        @if (TempData["Success"] != null)
+        {
+            <div class="alert alert-success">@TempData["Success"]</div>
+        }
+
+        @if (TempData["Error"] != null)
+        {
+            <div class="alert alert-danger">@TempData["Error"]</div>
+        }
+
+        <h5 class="fw-bold mb-3">Bu Sayıdaki Makaleler</h5>
+
+        @if (Model.Articles != null && Model.Articles.Any())
+        {
+            <div class="table-responsive mb-4">
+                <table class="table align-middle">
+                    <thead>
+                        <tr>
+                            <th>Sıra</th>
+                            <th>Makale</th>
+                            <th>Yazarlar</th>
+                            <th>Sayfa</th>
+                            <th class="text-end">İşlem</th>
+                        </tr>
+                    </thead>
+
+                    <tbody>
+                        @foreach (var article in Model.Articles.OrderBy(a => a.SortOrder))
+                        {
+                            <tr>
+                                <td>@article.SortOrder</td>
+                                <td>@article.DisplayTitle</td>
+                                <td>@(string.IsNullOrWhiteSpace(article.AuthorsText) ? "-" : article.AuthorsText)</td>
+                                <td>@(string.IsNullOrWhiteSpace(article.Pages) ? "-" : article.Pages)</td>
+                                <td class="text-end">
+                                    <form asp-action="RemoveArticle"
+                                          asp-route-id="@article.Id"
+                                          method="post"
+                                          onsubmit="return confirm('Makale sayıdan çıkarılsın mı?');">
+                                        @Html.AntiForgeryToken()
+                                        <button type="submit" class="btn btn-sm btn-outline-danger">
+                                            Çıkar
+                                        </button>
+                                    </form>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+        else
+        {
+            <div class="alert alert-info">
+                Bu sayıya henüz makale eklenmemiş.
+            </div>
+        }
+
+        <hr />
+
+        <h5 class="fw-bold mb-3">Kabul Edilen Makaleyi Sayıya Ekle</h5>
+
+        @if (acceptedSubmissions.Any())
+        {
+            <form asp-action="AddArticle" method="post" class="row g-2 align-items-end">
+                @Html.AntiForgeryToken()
+
+                <input type="hidden" name="issueId" value="@Model.Id" />
+
+                <div class="col-md-8">
+                    <label class="form-label fw-semibold">Makale</label>
+                    <select name="submissionId" class="form-select" required>
+                        <option value="">Makale seçiniz</option>
+                        @foreach (var submission in acceptedSubmissions)
+                        {
+                            var authors = submission.Authors != null && submission.Authors.Any()
+                                ? string.Join(", ", submission.Authors.OrderBy(a => a.SortOrder).Select(a => a.FullName))
+                                : "-";
+
+                            <option value="@submission.Id">
+                                #@submission.Id - @submission.Title (@authors)
+                            </option>
+                        }
+                    </select>
+                </div>
+
+                <div class="col-md-2">
+                    <label class="form-label fw-semibold">Sayfa</label>
+                    <input name="pages" class="form-control" placeholder="1-12" />
+                </div>
+
+                <div class="col-md-2">
+                    <button type="submit" class="btn btn-primary w-100">
+                        Ekle
+                    </button>
+                </div>
+            </form>
+        }
+        else
+        {
+            <div class="alert alert-warning">
+                Sayıya eklenebilecek kabul edilmiş yeni makale bulunmuyor.
+            </div>
+        }
+    </div>
+</div>

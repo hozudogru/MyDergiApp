@@ -18,103 +18,110 @@ namespace MyDergiApp.Controllers
             _context = context;
             _userManager = userManager;
         }
-        public IActionResult AccessDenied()
-        {
-            return View();
-        }
+
+        [HttpGet]
         public async Task<IActionResult> Index()
         {
             var settings = await _context.HomePageSettings
                 .AsNoTracking()
                 .FirstOrDefaultAsync(x => x.IsActive);
 
+            settings ??= new HomePageSettings
+            {
+                JournalTitle = "MyDergiApp",
+                JournalSubtitle = "Journal Management Panel",
+                HeroTitle = "Akademik Dergi Yönetim Sistemi",
+                HeroDescription = "Makale gönderim, hakemlik ve editörlük süreçlerini çevrimiçi yönetin.",
+                AboutTitle = "Dergi Hakkında",
+                AboutContent = "Bu alanı yönetim panelinden düzenleyebilirsiniz.",
+                FooterText = "MyDergiApp Journal Editorial System"
+            };
+
+            var latestArticles = await _context.Submissions
+                .Include(s => s.Authors)
+                .Where(s => s.Status == SubmissionStatus.KabulEdildi)
+                .OrderByDescending(s => s.DecisionDate ?? s.UpdatedAt ?? s.CreatedAt)
+                .Take(5)
+                .Select(s => new LatestArticleViewModel
+                {
+                    Id = s.Id,
+                    Title = s.Title,
+                    Abstract = s.Abstract,
+                    Authors = string.Join(", ", s.Authors
+                        .OrderBy(a => a.SortOrder)
+                        .Select(a => a.FullName))
+                })
+                .ToListAsync();
+
+            var announcements = await _context.Announcements
+                .AsNoTracking()
+                .Where(x => x.IsActive)
+                .OrderByDescending(x => x.ShowAsPopup)
+                .ThenByDescending(x => x.CreatedAt)
+                .Take(5)
+                .ToListAsync();
+
             var indexes = await _context.JournalIndexes
                 .AsNoTracking()
                 .Where(x => x.IsActive)
                 .OrderBy(x => x.SortOrder)
-                .Select(x => new JournalIndexItemViewModel
-                {
-                    Name = x.Name,
-                    LogoPath = x.LogoPath,
-                    Url = x.Url
-                })
+                .ThenBy(x => x.Name)
                 .ToListAsync();
 
-            var latestArticles = await _context.Submissions
-                .AsNoTracking()
-                .OrderByDescending(x => x.Id)
-                .Take(6)
-                .Select(x => new ArticleCardViewModel
-                {
-                    Id = x.Id,
-                    Title = x.Title ?? "",
-                    Authors = "Author",
-                    Abstract = x.Abstract,
-                    PdfPath = null,
-                    Pages = null
-                })
-                .ToListAsync();
-            var announcements = await _context.Announcements
-                .AsNoTracking()
-                .Where(x => x.IsActive)
-                .OrderByDescending(x => x.CreatedAt)
-                .Take(5)
-                .Select(x => new AnnouncementItemViewModel
-                {
-                    Id = x.Id,
-                    Title = x.Title,
-                    Content = x.Content,
-                    CreatedAt = x.CreatedAt,
-                    ShowAsPopup = x.ShowAsPopup
-                })
-                .ToListAsync();
-            var currentIssue = await _context.Issues
-                .AsNoTracking()
-                .Where(x => x.IsCurrent && x.IsPublished)
-                .OrderByDescending(x => x.Year)
-                .ThenByDescending(x => x.Volume)
-                .ThenByDescending(x => x.Number)
-                .FirstOrDefaultAsync();
-            var reviewers = await _userManager.GetUsersInRoleAsync("Reviewer");
-            var authors = await _userManager.GetUsersInRoleAsync("Author");
+            var reviewerUsers = await _userManager.GetUsersInRoleAsync("Reviewer");
 
-            var vm = new HomePageViewModel
+            var model = new HomePageViewModel
             {
-                JournalTitle = settings?.JournalTitle ?? "MyDergiApp Journal",
-                JournalSubtitle = settings?.JournalSubtitle ?? "Peer-reviewed international academic journal",
-                HeroTitle = settings?.HeroTitle ?? "Professional Academic Publishing Platform",
-                HeroDescription = settings?.HeroDescription ?? "Submit, review, manage and publish academic articles through a modern journal system.",
-                AboutTitle = settings?.AboutTitle ?? "About the Journal",
-                AboutContent = settings?.AboutContent ?? "MyDergiApp is a modern academic journal platform for submission, review, editorial workflow and publication management.",
-                PrintIssn = settings?.PrintIssn,
-                OnlineIssn = settings?.OnlineIssn,
-                ContactEmail = settings?.ContactEmail,
-                ContactPhone = settings?.ContactPhone,
-                Address = settings?.Address,
-                FooterText = settings?.FooterText ?? "MyDergiApp is designed for professional scholarly publishing.",
-                LogoPath = settings?.LogoPath,
+                JournalTitle = settings.JournalTitle,
+                JournalSubtitle = settings.JournalSubtitle,
+                HeroTitle = settings.HeroTitle,
+                HeroDescription = settings.HeroDescription,
+                AboutTitle = settings.AboutTitle,
+                AboutContent = settings.AboutContent,
+                PrintIssn = settings.PrintIssn,
+                OnlineIssn = settings.OnlineIssn,
+                ContactEmail = settings.ContactEmail,
+                ContactPhone = settings.ContactPhone,
+                Address = settings.Address,
+                LogoPath = settings.LogoPath,
+                FooterText = settings.FooterText,
+                ThemeName = settings?.ThemeName ?? "classic",
+                PrimaryColor = settings?.PrimaryColor ?? "#0d6efd",
+                SecondaryColor = settings?.SecondaryColor ?? "#198754",
+                HeaderBgColor = settings?.HeaderBgColor ?? "#ffffff",
+                NavBgColor = settings?.NavBgColor ?? "#ffffff",
+                BodyBgColor = settings?.BodyBgColor ?? "#f8fafc",
+                TextColor = settings?.TextColor ?? "#111827",
+                BannerTitle = settings?.BannerTitle ?? "Professional Academic Publishing Platform",
+                BannerDescription = settings?.BannerDescription ?? "Submit, review, manage and publish academic articles through a modern journal system.",
+                BannerLabel = settings?.BannerLabel ?? "Hakemli • Açık Erişim • Akademik Yayıncılık",
+
+                BannerPrimaryButtonText = settings?.BannerPrimaryButtonText ?? "Makale Gönder",
+                BannerPrimaryButtonUrl = settings?.BannerPrimaryButtonUrl ?? "/Submission/YeniMakale",
+
+                BannerSecondaryButtonText = settings?.BannerSecondaryButtonText ?? "Makaleleri İncele",
+                BannerSecondaryButtonUrl = settings?.BannerSecondaryButtonUrl ?? "/Issues/Published",
+
+                BannerImagePath = settings?.BannerImagePath,
+                ShowBanner = settings?.ShowBanner ?? true,
+                HeaderLogoPath = settings?.HeaderLogoPath ?? settings?.LogoPath,
+                HeaderTitle = settings?.HeaderTitle ?? settings?.SiteTitle ?? "MyDergiApp Journal",
+                HeaderSubtitle = settings?.HeaderSubtitle ?? settings?.Subtitle,
+                HeaderRightText = settings?.HeaderRightText ?? "Akademik Dergi Platformu",
+                HeaderBackgroundImagePath = settings?.HeaderBackgroundImagePath,
+                ShowHeaderLogo = settings?.ShowHeaderLogo ?? true,
                 LatestArticles = latestArticles,
                 Announcements = announcements,
                 Indexes = indexes,
-                TotalArticles = await _context.Submissions.CountAsync(x => x.Status == SubmissionStatus.Accepted),
-                CurrentIssue = currentIssue == null ? null : new CurrentIssueViewModel
-                {
-                    Id = currentIssue.Id,
-                    Title = currentIssue.Title ?? "",
-                    Volume = currentIssue.Volume,
-                    Number = currentIssue.Number,
-                    Year = currentIssue.Year,
-                    CoverImagePath = currentIssue.CoverImagePath,
-                    PublishedDate = currentIssue.PublishedDate,
-                    Description = currentIssue.Description
-                },
+                TotalArticles = await _context.Submissions.CountAsync(s => s.Status == SubmissionStatus.KabulEdildi),
+                TotalIssues = 0,
+                TotalReviewers = reviewerUsers.Count,
+                TotalAuthors = await _context.SubmissionAuthors.Select(a => a.Email).Distinct().CountAsync(),
+                CurrentIssue = null
 
-                TotalIssues = await _context.Issues.CountAsync(x => x.IsPublished),
-                TotalReviewers = reviewers.Count,
-                TotalAuthors = authors.Count
             };
 
-            return View(vm);
+            return View(model);
         }
     }
 }

@@ -12,6 +12,7 @@ namespace MyDergiApp.Models
 
         public string ReviewerId { get; set; } = string.Empty;
         public AppUser? Reviewer { get; set; }
+        public int ReviewRound { get; set; } = 1;
 
         public string? Comments { get; set; }
         public string? CommentToAuthor { get; set; }
@@ -30,6 +31,11 @@ namespace MyDergiApp.Models
 
         public bool HasEthicalIssue { get; set; } = false;
         public string? EthicalConcerns { get; set; }
+
+        public string? ReviewerAttachmentPath { get; set; }
+        public string? ReviewerAttachmentOriginalFileName { get; set; }
+        public string? ReviewerAttachmentNote { get; set; }
+        public bool SendAttachmentToAuthor { get; set; } = true;
 
         public string? Decision { get; set; }
 

@@ -1,0 +1,79 @@
+@model MyDergiApp.Models.Issue
+
+@{
+    ViewData["Title"] = "Sayı Detayı";
+}
+
+<div class="container py-5">
+    <div class="mb-4">
+        <h1 class="fw-bold">
+            @Model.Year - Cilt @Model.Volume, Sayı @Model.Number
+        </h1>
+
+        @if (!string.IsNullOrWhiteSpace(Model.Title))
+        {
+            <p class="lead text-muted">@Model.Title</p>
+        }
+    </div>
+
+    @if (Model.Articles != null && Model.Articles.Any())
+    {
+        <div class="list-group shadow-sm">
+            @foreach (var article in Model.Articles.OrderBy(a => a.SortOrder))
+            {
+                <div class="list-group-item p-4">
+                    <h5 class="fw-bold mb-2">@article.DisplayTitle</h5>
+
+                    <div class="text-muted mb-2">
+                        @(string.IsNullOrWhiteSpace(article.AuthorsText) ? "-" : article.AuthorsText)
+                    </div>
+
+                    @if (!string.IsNullOrWhiteSpace(article.Pages))
+                    {
+                        <div class="small text-muted mb-2">
+                            Sayfa: @article.Pages
+                        </div>
+                    }
+
+                    @if (!string.IsNullOrWhiteSpace(article.Submission?.Abstract))
+                    {
+                        <p class="mb-0">
+                            @article.Submission.Abstract
+                        </p>
+                    }
+                    @{
+                        var mainFile = article.Submission?.Files?
+                            .Where(f => f.FileType == "RevizyonDosyasi" || f.FileType == "MakaleDosyasi")
+                            .OrderByDescending(f => f.UploadedAt)
+                            .FirstOrDefault();
+                    }
+
+                    @if (mainFile != null)
+                    {
+                        <div class="mt-3">
+                            <a asp-controller="Submission"
+                               asp-action="DownloadPublishedFile"
+                               asp-route-id="@mainFile.Id"
+                               target="_blank"
+                               class="btn btn-sm btn-outline-primary">
+                                Makale Dosyasını İndir
+                            </a>
+                        </div>
+                    }
+                </div>
+            }
+        </div>
+    }
+    else
+    {
+        <div class="alert alert-info">
+            Bu sayıda henüz makale bulunmamaktadır.
+        </div>
+    }
+
+    <div class="mt-4">
+        <a asp-action="Published" class="btn btn-secondary">
+            Yayınlanan Sayılara Dön
+        </a>
+    </div>
+</div>

@@ -41,18 +41,36 @@ body {
 }
 
 /* NAV */
-.journal-nav {
-    background: #fff;
-    border-bottom: 1px solid #dde5ee;
+..journal-nav {
+    background: #ffffff;
+    border-top: 1px solid #e5e7eb;
+    border-bottom: 1px solid #e5e7eb;
+    padding: 0;
 }
-
+.journal-nav a {
+    color: #0d6efd;
+    text-decoration: none;
+    font-weight: 500;
+    font-size: 15px;
+}
+.journal-nav a:hover {
+    text-decoration: underline;
+}
 .journal-nav-list {
     list-style: none;
     display: flex;
     gap: 28px;
     padding: 16px 0;
 }
-
+.journal-nav-inner {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 14px 24px;
+    display: flex;
+    align-items: center;
+    gap: 28px;
+    flex-wrap: wrap;
+}
 /* LAYOUT FIX */
 .hero-section,
 .main-content-section {
@@ -162,3 +180,56 @@ body {
         .journal-footer a:hover {
             color: #fff;
         }
+.theme-modern .hero-box {
+    border-radius: 28px;
+    box-shadow: 0 20px 50px rgba(15, 23, 42, .12);
+}
+
+.theme-darkblue .journal-header {
+    color: #ffffff;
+}
+
+.theme-darkblue .journal-title,
+.theme-darkblue .journal-subtitle {
+    color: #ffffff;
+}
+
+.theme-burgundy .content-card,
+.theme-burgundy .sidebar-card {
+    border-top: 4px solid var(--theme-primary);
+}
+.dynamic-banner {
+    overflow: hidden;
+}
+
+.dynamic-banner-img {
+    max-height: 280px;
+    object-fit: contain;
+    border-radius: 22px;
+}
+.dynamic-header {
+    min-height: 230px;
+    background-size: cover;
+    background-position: center;
+    display: flex;
+    align-items: center;
+}
+
+.dynamic-header-logo {
+    max-width: 260px;
+    max-height: 180px;
+    object-fit: contain;
+}
+
+.dynamic-header .journal-title {
+    color: inherit;
+}
+
+.dynamic-header .journal-subtitle {
+    color: inherit;
+}
+
+.dynamic-header .header-issue-badge {
+    color: inherit;
+    font-weight: 500;
+}

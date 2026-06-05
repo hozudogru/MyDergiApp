@@ -8,7 +8,7 @@ using MyDergiApp.ViewModels;
 using MyDergiApp.ViewModels.Users;
 using System.Security.Claims;
 using Microsoft.AspNetCore.Mvc.Rendering;
-
+using System.Linq;
 
 [Authorize(Roles = "Admin")]
 public class UserManagementController : Controller
@@ -73,17 +73,24 @@ public class UserManagementController : Controller
 
         return View(vm);
     }
-    [Authorize(Roles = "Admin")]
     [HttpPost]
     [ValidateAntiForgeryToken]
+    [Authorize(Roles = "Admin")]
     public async Task<IActionResult> Delete(string id)
     {
         if (string.IsNullOrWhiteSpace(id))
-            return BadRequest();
+        {
+            TempData["Error"] = "Kullanıcı bulunamadı.";
+            return RedirectToAction(nameof(Index));
+        }
 
         var user = await _userManager.FindByIdAsync(id);
+
         if (user == null)
-            return NotFound();
+        {
+            TempData["Error"] = "Kullanıcı bulunamadı.";
+            return RedirectToAction(nameof(Index));
+        }
 
         var currentUserId = _userManager.GetUserId(User);
 
@@ -97,41 +104,42 @@ public class UserManagementController : Controller
 
         if (roles.Contains("Admin"))
         {
-            TempData["Error"] = "Sistem yöneticisi kullanıcı silinemez.";
+            TempData["Error"] = "Admin kullanıcı silinemez.";
             return RedirectToAction(nameof(Index));
         }
 
-        var hasSubmissions = await _context.Submissions
-            .AnyAsync(x => x.AuthorId == user.Id);
+        var hasSubmissionAsAuthor = await _context.Submissions
+            .AnyAsync(s => s.AuthorId == user.Id);
 
-        if (hasSubmissions)
+        var hasSubmissionAsEditor = await _context.Submissions
+            .AnyAsync(s => s.AssignedSectionEditorId == user.Id);
+
+
+        var hasReviewerAssignment = await _context.SubmissionReviewers
+            .AnyAsync(sr => sr.ReviewerId == user.Id);
+
+        if (hasSubmissionAsAuthor ||
+            hasSubmissionAsEditor ||
+            hasReviewerAssignment)
         {
-            TempData["Error"] = "Bu kullanıcıya bağlı makaleler olduğu için silinemez. Kullanıcıyı pasif yapın.";
+            user.IsActive = false;
+            await _userManager.UpdateAsync(user);
+
+            TempData["Error"] = "Bu kullanıcı makale, editörlük, yazarlık veya hakemlik kayıtlarına bağlı olduğu için silinmedi; pasif yapıldı.";
             return RedirectToAction(nameof(Index));
-        }
-
-        var reviewerAssignments = await _context.SubmissionReviewers
-            .Where(x => x.ReviewerId == user.Id)
-            .ToListAsync();
-
-        if (reviewerAssignments.Any())
-        {
-            _context.SubmissionReviewers.RemoveRange(reviewerAssignments);
-            await _context.SaveChangesAsync();
         }
 
         var result = await _userManager.DeleteAsync(user);
 
-        if (!result.Succeeded)
+        if (result.Succeeded)
         {
-            TempData["Error"] = string.Join(" | ", result.Errors.Select(x => x.Description));
+            TempData["Success"] = "Kullanıcı silindi.";
             return RedirectToAction(nameof(Index));
         }
 
-        TempData["Success"] = "Kullanıcı başarıyla silindi.";
+        TempData["Error"] = string.Join(" ", result.Errors.Select(e => e.Description));
         return RedirectToAction(nameof(Index));
     }
-
     [Authorize(Roles = "Admin")]
     [HttpGet]
     public async Task<IActionResult> TestMail()
@@ -154,14 +162,18 @@ public class UserManagementController : Controller
     [HttpGet]
     public async Task<IActionResult> Edit(string id)
     {
+        if (string.IsNullOrWhiteSpace(id))
+            return NotFound();
+
         var user = await _userManager.FindByIdAsync(id);
-        if (user == null) return NotFound();
+        if (user == null)
+            return NotFound();
 
         var model = new UserEditViewModel
         {
             Id = user.Id,
-            FullName = user.FullName ?? "",
-            Email = user.Email ?? "",
+            FullName = user.FullName ?? string.Empty,
+            Email = user.Email ?? string.Empty,
             IsActive = user.IsActive
         };
 
@@ -243,23 +255,40 @@ public class UserManagementController : Controller
             return View(model);
 
         var user = await _userManager.FindByIdAsync(model.Id);
-        if (user == null) return NotFound();
+        if (user == null)
+            return NotFound();
 
         user.FullName = model.FullName;
         user.Email = model.Email;
         user.UserName = model.Email;
+        user.NormalizedEmail = model.Email.ToUpperInvariant();
+        user.NormalizedUserName = model.Email.ToUpperInvariant();
         user.IsActive = model.IsActive;
 
-        var result = await _userManager.UpdateAsync(user);
-
-        if (!result.Succeeded)
+        var updateResult = await _userManager.UpdateAsync(user);
+        if (!updateResult.Succeeded)
         {
-            foreach (var error in result.Errors)
-                ModelState.AddModelError("", error.Description);
+            foreach (var error in updateResult.Errors)
+                ModelState.AddModelError(string.Empty, error.Description);
 
             return View(model);
         }
 
+        if (!string.IsNullOrWhiteSpace(model.NewPassword))
+        {
+            var token = await _userManager.GeneratePasswordResetTokenAsync(user);
+            var resetResult = await _userManager.ResetPasswordAsync(user, token, model.NewPassword);
+
+            if (!resetResult.Succeeded)
+            {
+                foreach (var error in resetResult.Errors)
+                    ModelState.AddModelError(string.Empty, error.Description);
+
+                return View(model);
+            }
+        }
+
+        TempData["Success"] = "Kullanıcı başarıyla güncellendi.";
         return RedirectToAction(nameof(Index));
     }
 
@@ -287,31 +316,80 @@ public class UserManagementController : Controller
         return View(model);
     }
 
+    [Authorize(Roles = "Admin")]
     [HttpPost]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> EditRoles(EditUserRolesViewModel model)
     {
         var user = await _userManager.FindByIdAsync(model.UserId);
-        if (user == null) return NotFound();
 
+        if (user == null)
+            return NotFound();
+
+        var currentUserId = _userManager.GetUserId(User);
         var currentRoles = await _userManager.GetRolesAsync(user);
-        await _userManager.RemoveFromRolesAsync(user, currentRoles);
 
-        var selectedRoles = model.Roles
+        var selectedRoles = model.Roles?
             .Where(r => r.Selected)
             .Select(r => r.RoleName)
             .Where(r => !string.IsNullOrWhiteSpace(r))
-            .ToList();
+            .Distinct()
+            .ToList() ?? new List<string>();
 
-        if (selectedRoles.Any())
-            await _userManager.AddToRolesAsync(user, selectedRoles);
+        foreach (var roleName in selectedRoles)
+        {
+            if (!await _roleManager.RoleExistsAsync(roleName))
+            {
+                TempData["Error"] = $"Geçersiz rol seçildi: {roleName}";
+                return RedirectToAction(nameof(EditRoles), new { id = model.UserId });
+            }
+        }
 
+        if (user.Id == currentUserId && currentRoles.Contains("Admin") && !selectedRoles.Contains("Admin"))
+        {
+            TempData["Error"] = "Kendi Admin rolünüzü kaldıramazsınız.";
+            return RedirectToAction(nameof(EditRoles), new { id = model.UserId });
+        }
+
+        if (!selectedRoles.Any())
+        {
+            selectedRoles.Add("Author");
+        }
+
+        var removeResult = await _userManager.RemoveFromRolesAsync(user, currentRoles);
+
+        if (!removeResult.Succeeded)
+        {
+            TempData["Error"] = string.Join(" | ", removeResult.Errors.Select(e => e.Description));
+            return RedirectToAction(nameof(EditRoles), new { id = model.UserId });
+        }
+
+        var addResult = await _userManager.AddToRolesAsync(user, selectedRoles);
+
+        if (!addResult.Succeeded)
+        {
+            TempData["Error"] = string.Join(" | ", addResult.Errors.Select(e => e.Description));
+            return RedirectToAction(nameof(EditRoles), new { id = model.UserId });
+        }
+
+        TempData["Success"] = "Kullanıcı rolleri güncellendi.";
         return RedirectToAction(nameof(Index));
     }
 
+    [Authorize(Roles = "Admin")]
     [HttpPost]
+    [ValidateAntiForgeryToken]
     public async Task<IActionResult> ToggleActive(string id)
     {
+        if (string.IsNullOrWhiteSpace(id))
+        {
+            return Json(new
+            {
+                success = false,
+                message = "Kullanıcı bilgisi alınamadı."
+            });
+        }
+
         var currentUserId = User.FindFirstValue(ClaimTypes.NameIdentifier);
 
         if (currentUserId == id)
@@ -319,26 +397,52 @@ public class UserManagementController : Controller
             return Json(new
             {
                 success = false,
-                message = "Kendi hesabınızı pasif yapamazsınız!"
+                message = "Kendi hesabınızı pasif yapamazsınız."
             });
         }
 
-        // 👇 senin mevcut kodun
         var user = await _userManager.FindByIdAsync(id);
+
         if (user == null)
-            return Json(new { success = false });
+        {
+            return Json(new
+            {
+                success = false,
+                message = "Kullanıcı bulunamadı."
+            });
+        }
+
+        var roles = await _userManager.GetRolesAsync(user);
+
+        if (roles.Contains("Admin"))
+        {
+            return Json(new
+            {
+                success = false,
+                message = "Admin kullanıcı pasif yapılamaz."
+            });
+        }
 
         user.IsActive = !user.IsActive;
 
         var result = await _userManager.UpdateAsync(user);
 
         if (!result.Succeeded)
-            return Json(new { success = false });
+        {
+            return Json(new
+            {
+                success = false,
+                message = string.Join(" | ", result.Errors.Select(e => e.Description))
+            });
+        }
 
         return Json(new
         {
             success = true,
-            isActive = user.IsActive
+            isActive = user.IsActive,
+            message = user.IsActive
+                ? "Kullanıcı aktif yapıldı."
+                : "Kullanıcı pasif yapıldı."
         });
     }
 
