@@ -42,17 +42,15 @@ jobs:
           echo "Publish klasörü:"
           ls -la ./publish
   
-      - name: Sunucuda geçici klasörü hazırla
-        uses: appleboy/ssh-action@v1.0.3
-        with:
-          host: ${{ secrets.HOST }}
-          username: ${{ secrets.USERNAME }}
-          password: ${{ secrets.PASSWORD }}
-          port: ${{ secrets.PORT }}
-          script: |
-            set -e
-            mkdir -p /tmp/mydergiapp_deploy
-            rm -f /tmp/mydergiapp_deploy/mydergiapp.tar.gz
+      - name: Publish çıktısını kontrol et
+        run: |
+          echo "Publish klasörü:"
+          ls -la ./publish
+
+      - name: Publish paketini hazırla
+        run: |
+          tar -czf mydergiapp.tar.gz -C ./publish .
+          ls -lh mydergiapp.tar.gz
 
       - name: Paketi sunucuya yükle
         uses: appleboy/scp-action@v0.1.7
@@ -61,9 +59,10 @@ jobs:
           username: ${{ secrets.USERNAME }}
           password: ${{ secrets.PASSWORD }}
           port: ${{ secrets.PORT }}
-          source: "publish"
-          target: "/var/www/mydergiapp_deploy"
-          
+          source: "mydergiapp.tar.gz"
+          target: "/tmp/mydergiapp_deploy"
+          rm: true
+
       - name: Canlıya al ve servisi yeniden başlat
         uses: appleboy/ssh-action@v1.0.3
         with:
@@ -83,7 +82,6 @@ jobs:
             rm -rf "$BACKUP_DIR"
             mkdir -p "$BACKUP_DIR"
 
-            # config ve upload klasörünü koru
             if [ -f "$APP_DIR/appsettings.json" ]; then
               cp "$APP_DIR/appsettings.json" "$BACKUP_DIR/appsettings.json"
             fi
@@ -96,13 +94,10 @@ jobs:
               cp -r "$APP_DIR/wwwroot/uploads" "$BACKUP_DIR/uploads"
             fi
 
-            # eski dosyaları temizle
             rm -rf "$APP_DIR"/*
 
-            # yeni publish dosyalarını aç
             tar -xzf "$TMP_DIR/mydergiapp.tar.gz" -C "$APP_DIR"
 
-            # korunan dosyaları geri koy
             if [ -f "$BACKUP_DIR/appsettings.json" ]; then
               cp "$BACKUP_DIR/appsettings.json" "$APP_DIR/appsettings.json"
             fi
@@ -117,13 +112,13 @@ jobs:
               cp -r "$BACKUP_DIR/uploads/." "$APP_DIR/wwwroot/uploads/" || true
             fi
 
-            chown -R root:root "$APP_DIR"
+            chown -R deploy:deploy "$APP_DIR"
             chmod -R 755 "$APP_DIR"
             chmod -R 775 "$APP_DIR/wwwroot/uploads"
 
             systemctl daemon-reload
-            systemctl restart MyDergiApp
-            systemctl status MyDergiApp --no-pager -l
+            systemctl restart MyDergiApp.service
+            systemctl status MyDergiApp.service --no-pager -l
 
             rm -rf "$TMP_DIR"
             rm -rf "$BACKUP_DIR"
