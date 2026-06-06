@@ -1,217 +1,121 @@
 @model MyDergiApp.ViewModels.HomePageViewModel
+
 @{
-    Layout = null;
+    Layout = "~/Views/Shared/_FrontLayout.cshtml";
     ViewData["Title"] = "Ana Sayfa";
+
+    var journalTitle = string.IsNullOrWhiteSpace(Model.HeaderTitle)
+        ? Model.JournalTitle
+        : Model.HeaderTitle;
+
+    var journalSubtitle = string.IsNullOrWhiteSpace(Model.HeaderSubtitle)
+        ? Model.JournalSubtitle
+        : Model.HeaderSubtitle;
+
+    var heroTitle = Model.ShowBanner && !string.IsNullOrWhiteSpace(Model.BannerTitle)
+        ? Model.BannerTitle
+        : Model.HeroTitle;
+
+    var heroDescription = Model.ShowBanner && !string.IsNullOrWhiteSpace(Model.BannerDescription)
+        ? Model.BannerDescription
+        : Model.HeroDescription;
+
+    var heroLabel = Model.ShowBanner && !string.IsNullOrWhiteSpace(Model.BannerLabel)
+        ? Model.BannerLabel
+        : "Hakemli Akademik Dergi";
 }
 
-<!DOCTYPE html>
-<html lang="tr">
-<head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>@Model.JournalTitle</title>
+<style>
+    :root {
+        --front-primary: @(string.IsNullOrWhiteSpace(Model.PrimaryColor) ? "#1f4f8f" : Model.PrimaryColor);
+        --front-accent: @(string.IsNullOrWhiteSpace(Model.SecondaryColor) ? "#b3261e" : Model.SecondaryColor);
+        --front-bg: @(string.IsNullOrWhiteSpace(Model.BodyBgColor) ? "#f4f7fb" : Model.BodyBgColor);
+        --front-dark: @(string.IsNullOrWhiteSpace(Model.TextColor) ? "#172033" : Model.TextColor);
+    }
 
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="~/css/frontpage.css" asp-append-version="true" />
-    <style>
-            :root {
-                --theme-primary: @Model.PrimaryColor;
-                --theme-secondary: @Model.SecondaryColor;
-                --theme-header-bg: @Model.HeaderBgColor;
-                --theme-nav-bg: @Model.NavBgColor;
-                --theme-body-bg: @Model.BodyBgColor;
-                --theme-text: @Model.TextColor;
-            }
+    body {
+        background: var(--front-bg);
+        color: var(--front-dark);
+    }
 
-            body {
-                background: var(--theme-body-bg);
-                color: var(--theme-text);
-            }
+    .journal-header {
+        background: @(string.IsNullOrWhiteSpace(Model.HeaderBgColor) ? "linear-gradient(135deg, #ffffff 0%, #f8fbff 100%)" : Model.HeaderBgColor);
+    }
 
-            .journal-header {
-                background: var(--theme-header-bg);
-            }
+    .journal-nav {
+        background: @(string.IsNullOrWhiteSpace(Model.NavBgColor) ? "var(--front-primary)" : Model.NavBgColor);
+    }
+</style>
 
-            .journal-nav {
-                background: var(--theme-nav-bg);
-            }
+<div class="journal-home theme-@Model.ThemeName">
 
-            .journal-title,
-            .section-title,
-            .article-item h5 {
-                color: var(--theme-primary);
-            }
-
-            .btn-primary {
-                background-color: var(--theme-primary);
-                border-color: var(--theme-primary);
-            }
-
-            .btn-outline-primary {
-                color: var(--theme-primary);
-                border-color: var(--theme-primary);
-            }
-
-                .btn-outline-primary:hover {
-                    background-color: var(--theme-primary);
-                    border-color: var(--theme-primary);
-                }
-
-            .btn-success {
-                background-color: var(--theme-secondary);
-                border-color: var(--theme-secondary);
-            }
-
-            .journal-nav a {
-                color: var(--theme-primary);
-            }
-
-            .hero-label {
-                color: var(--theme-secondary);
-            }
-
-            .theme-modern .hero-box,
-            .theme-modern .content-card,
-            .theme-modern .sidebar-card,
-            .theme-modern .stats-card {
-                border-radius: 28px;
-                box-shadow: 0 20px 50px rgba(15, 23, 42, .10);
-            }
-
-            .theme-darkblue .journal-header {
-                background: var(--theme-header-bg);
-                color: #ffffff;
-            }
-
-            .theme-darkblue .journal-title,
-            .theme-darkblue .journal-subtitle,
-            .theme-darkblue .header-issue-badge {
-                color: #ffffff;
-            }
-
-            .theme-darkblue .journal-topbar {
-                background: #061a38;
-            }
-
-            .theme-green .hero-box,
-            .theme-green .content-card,
-            .theme-green .sidebar-card {
-                border-left: 5px solid var(--theme-primary);
-            }
-
-            .theme-burgundy .hero-box,
-            .theme-burgundy .content-card,
-            .theme-burgundy .sidebar-card {
-                border-top: 5px solid var(--theme-primary);
-            }
-
-            .theme-burgundy .journal-topbar {
-                background: #450a0a;
-            }
-
-            .theme-classic .hero-box {
-                border-radius: 18px;
-            }
-    </style>
-</head>
-<body class="theme-@Model.ThemeName">
-
-    <div class="journal-topbar">
-        <div class="container d-flex justify-content-between align-items-center">
+    <!-- ISSN BAR -->
+    <section class="issn-bar">
+        <div class="front-container issn-inner issn-inner-center">
             <div>
                 @if (!string.IsNullOrWhiteSpace(Model.PrintIssn))
                 {
-                    <span>ISSN (Basılı): @Model.PrintIssn</span>
+                    <strong>ISSN:</strong> 
+                    @Model.PrintIssn
                 }
+
+                @if (!string.IsNullOrWhiteSpace(Model.PrintIssn) && !string.IsNullOrWhiteSpace(Model.OnlineIssn))
+                {
+                    <span class="issn-separator">|</span>
+                }
+
                 @if (!string.IsNullOrWhiteSpace(Model.OnlineIssn))
                 {
-                    <span class="ms-3">ISSN (Çevrim içi): @Model.OnlineIssn</span>
+                    <strong>e-ISSN:</strong> 
+                    @Model.OnlineIssn
                 }
             </div>
+        </div>
+    </section>
 
-            <div>
-                @if (User.Identity != null && User.Identity.IsAuthenticated)
+    <!-- HEADER / LOGO -->
+    <section class="journal-header"
+             style="@(string.IsNullOrWhiteSpace(Model.HeaderBackgroundImagePath)
+                                     ? ""
+                                     : $"background-image: linear-gradient(rgba(255,255,255,.78), rgba(255,255,255,.78)), url('{Model.HeaderBackgroundImagePath}'); background-size:cover; background-position:center;")">
+        <div class="front-container journal-header-inner">
+            <div class="journal-logo-area">
+                @if (Model.ShowHeaderLogo && !string.IsNullOrWhiteSpace(Model.HeaderLogoPath))
                 {
-                    @if (User.IsInRole("Admin"))
-                    {
-                        <a asp-controller="Admin" asp-action="Index">Panel</a>
-                    }
-                    else if (User.IsInRole("ChiefEditor"))
-                    {
-                        <a asp-controller="Submission" asp-action="OnKontrolListesi">Panel</a>
-                    }
-                    else if (User.IsInRole("Editor"))
-                    {
-                        <a asp-controller="Submission" asp-action="EditorDashboard">Panel</a>
-                    }
-                    else if (User.IsInRole("Reviewer"))
-                    {
-                        <a asp-controller="Submission" asp-action="MyReviews">Panel</a>
-                    }
-                    else if (User.IsInRole("Author"))
-                    {
-                        <a asp-controller="Submission" asp-action="Makalelerim">Panel</a>
-                    }
-
-                    <span class="mx-2">|</span>
-
-                    <form asp-area="Identity"
-                          asp-page="/Account/Logout"
-                          asp-route-returnUrl="@Url.Action("Index", "Home", new { area = "" })"
-                          method="post"
-                          style="display:inline;">
-                        @Html.AntiForgeryToken()
-                        <button type="submit"
-                                style="border:none; background:none; padding:0; color:inherit; text-decoration:underline; cursor:pointer;">
-                            Çıkış
-                        </button>
-                    </form>
+                    <div class="journal-logo journal-logo-img">
+                        <img src="@Model.HeaderLogoPath" alt="@journalTitle" />
+                    </div>
                 }
                 else
                 {
-                    <a href="/Identity/Account/Register">Kayıt Ol</a>
-                    <span class="mx-2">|</span>
-                    <a href="/Identity/Account/Login">Giriş Yap</a>
-                }
-            </div>
-        </div>
-    </div>
-
-    <header class="journal-header dynamic-header"
-            style="@(string.IsNullOrWhiteSpace(Model.HeaderBackgroundImagePath)
-                        ? ""
-                        : $"background-image: linear-gradient(rgba(0,0,0,.35), rgba(0,0,0,.35)), url('{Model.HeaderBackgroundImagePath}');")">
-        <div class="container d-flex justify-content-between align-items-center flex-wrap gap-4">
-            <div class="d-flex align-items-center gap-4">
-                @if (Model.ShowHeaderLogo && !string.IsNullOrWhiteSpace(Model.HeaderLogoPath))
-                {
-                    <img src="@Model.HeaderLogoPath"
-                         alt="Logo"
-                         class="journal-logo dynamic-header-logo" />
+                    <div class="journal-logo">
+                        <span>@(string.IsNullOrWhiteSpace(journalTitle) ? "D" : journalTitle.Substring(0, 1))</span>
+                    </div>
                 }
 
                 <div>
-                    <h1 class="journal-title">
-                        @(string.IsNullOrWhiteSpace(Model.HeaderTitle) ? Model.JournalTitle : Model.HeaderTitle)
-                    </h1>
-
-                    <div class="journal-subtitle">
-                        @(string.IsNullOrWhiteSpace(Model.HeaderSubtitle) ? Model.JournalSubtitle : Model.HeaderSubtitle)
-                    </div>
+                    <h1>@journalTitle</h1>
+                    <p>@journalSubtitle</p>
                 </div>
             </div>
 
-            @if (!string.IsNullOrWhiteSpace(Model.HeaderRightText))
-            {
-                <div class="header-issue-badge">
-                    @Model.HeaderRightText
-                </div>
-            }
+            <div class="journal-header-actions">
+                @if (User.Identity != null && User.Identity.IsAuthenticated)
+                {
+                    <a class="header-btn header-btn-outline" asp-controller="Submission" asp-action="Makalelerim">Panelim</a>
+                }
+                else
+                {
+                    <a class="header-btn header-btn-outline" href="/Identity/Account/Login">Giriş Yap</a>
+                    <a class="header-btn header-btn-primary" href="/Identity/Account/Register">Kayıt Ol</a>
+                }
+            </div>
         </div>
-    </header>
+    </section>
 
+    <!-- MENU -->
     <nav class="journal-nav">
-        <div class="journal-nav-inner">
+        <div class="front-container nav-inner">
             <a asp-controller="Home" asp-action="Index">Ana Sayfa</a>
             <a href="#about">Dergi Hakkında</a>
             <a asp-controller="Issues" asp-action="Published">Yayınlanan Sayılar</a>
@@ -219,209 +123,216 @@
             <a href="#announcements">Duyurular</a>
             <a href="#indexes">İndeksler</a>
             <a href="#contact">İletişim</a>
-            <a asp-controller="Submission" asp-action="YeniMakale">Makale Gönder</a>
         </div>
     </nav>
 
+    <!-- HERO -->
     <section class="hero-section">
-        <div class="container">
-            <div class="row g-4 align-items-stretch">
+        <div class="front-container hero-grid">
+            <div class="hero-content">
+                <span class="hero-badge">@heroLabel</span>
 
-                <div class="col-lg-8">
-                    @if (Model.CurrentIssue != null)
-                    {
-                        <div class="content-card mb-4">
-                            <div class="section-title">Güncel Sayı</div>
-                            <div class="current-issue-box">
-                                <div class="issue-cover">
-                                    <img src="@(string.IsNullOrWhiteSpace(Model.CurrentIssue.CoverImagePath) ? "https://via.placeholder.com/180x250?text=Sayi+Kapagi" : Model.CurrentIssue.CoverImagePath)"
-                                         alt="Güncel Sayı Kapağı" />
-                                </div>
+                <h2>@heroTitle</h2>
 
-                                <div class="issue-details">
-                                    <h4>@Model.CurrentIssue.Title</h4>
-                                    <p><strong>Cilt:</strong> @Model.CurrentIssue.Volume</p>
-                                    <p><strong>Sayı:</strong> @Model.CurrentIssue.Number</p>
-                                    <p><strong>Yıl:</strong> @Model.CurrentIssue.Year</p>
-
-                                    @if (Model.CurrentIssue.PublishedDate.HasValue)
-                                    {
-                                        <p><strong>Yayın Tarihi:</strong> @Model.CurrentIssue.PublishedDate.Value.ToString("dd.MM.yyyy")</p>
-                                    }
-
-                                    @if (!string.IsNullOrWhiteSpace(Model.CurrentIssue.Description))
-                                    {
-                                        <p>@Model.CurrentIssue.Description</p>
-                                    }
-
-                                    <div class="mt-3">
-                                        <a asp-controller="Issues"
-                                           asp-action="Published"
-                                           class="btn btn-primary btn-sm me-2">
-                                            Sayıları Görüntüle
-                                        </a>
-
-                                        <a asp-controller="Issues"
-                                           asp-action="Published"
-                                           class="btn btn-outline-primary btn-sm">
-                                            Tüm Sayılar
-                                        </a>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    }
-
-                    @if (Model.ShowBanner)
-{
-    <div class="hero-box mb-4 dynamic-banner">
-        <div class="row g-4 align-items-center">
-            <div class="col-lg-@(string.IsNullOrWhiteSpace(Model.BannerImagePath) ? "12" : "7")">
-                @if (!string.IsNullOrWhiteSpace(Model.BannerLabel))
-                {
-                    <span class="hero-label">@Model.BannerLabel</span>
-                }
-
-                <h2>@(string.IsNullOrWhiteSpace(Model.BannerTitle) ? Model.HeroTitle : Model.BannerTitle)</h2>
-
-                <p>
-                    @(string.IsNullOrWhiteSpace(Model.BannerDescription) ? Model.HeroDescription : Model.BannerDescription)
-                </p>
+                <p>@heroDescription</p>
 
                 <div class="hero-actions">
-                    @if (!string.IsNullOrWhiteSpace(Model.BannerPrimaryButtonText))
-                    {
-                        <a href="@(string.IsNullOrWhiteSpace(Model.BannerPrimaryButtonUrl) ? "/Submission/YeniMakale" : Model.BannerPrimaryButtonUrl)"
-                           class="btn btn-primary btn-lg me-2">
-                            @Model.BannerPrimaryButtonText
-                        </a>
-                    }
-
-                    @if (!string.IsNullOrWhiteSpace(Model.BannerSecondaryButtonText))
-                    {
-                        <a href="@(string.IsNullOrWhiteSpace(Model.BannerSecondaryButtonUrl) ? "/Issues/Published" : Model.BannerSecondaryButtonUrl)"
-                           class="btn btn-outline-primary btn-lg">
-                            @Model.BannerSecondaryButtonText
-                        </a>
-                    }
+                    <a asp-controller="Issues" asp-action="Published" class="hero-btn hero-btn-primary">Yayınlanan Sayıları İncele</a>
+                    <a href="#latest-articles" class="hero-btn hero-btn-secondary">Son Makaleler</a>
                 </div>
             </div>
 
-            @if (!string.IsNullOrWhiteSpace(Model.BannerImagePath))
-            {
-                <div class="col-lg-5 text-center">
-                    <img src="@Model.BannerImagePath"
-                         alt="Banner"
-                         class="img-fluid dynamic-banner-img" />
-                </div>
-            }
+            <div class="hero-card">
+                @if (Model.CurrentIssue != null)
+                {
+                    <h3>Güncel Sayı</h3>
+                    <p class="hero-card-title">@Model.CurrentIssue.Title</p>
+
+                    <p>
+                        <strong>Cilt:</strong> @Model.CurrentIssue.Volume
+                        <br />
+                        <strong>Sayı:</strong> @Model.CurrentIssue.Number
+                        <br />
+                        <strong>Yıl:</strong> @Model.CurrentIssue.Year
+                    </p>
+
+                    @if (Model.CurrentIssue.PublishedDate.HasValue)
+                    {
+                        <p>
+                            <strong>Yayın Tarihi:</strong>
+                            @Model.CurrentIssue.PublishedDate.Value.ToString("dd.MM.yyyy")
+                        </p>
+                    }
+
+                    <a asp-controller="Issues" asp-action="Published">Güncel sayıya git →</a>
+                }
+                else
+                {
+                    <h3>Güncel Sayı</h3>
+                    <p class="hero-card-title">Henüz sayı yayımlanmadı</p>
+                    <p>Derginin yayımlanan sayıları buradan görüntülenebilir.</p>
+                    <a asp-controller="Issues" asp-action="Published">Sayıları görüntüle →</a>
+                }
+            </div>
         </div>
-    </div>
-}
-                        <span class="hero-label">Hakemli • Açık Erişim • Akademik Yayıncılık</span>
-                        <h2>@Model.HeroTitle</h2>
-                        <p>@Model.HeroDescription</p>
+    </section>
 
-                        <div class="hero-actions">
-                            <a asp-controller="Submission" asp-action="YeniMakale" class="btn btn-primary btn-lg me-2">
-                                Makale Gönder
-                            </a>
-                            <a asp-controller="Issues" asp-action="Published" class="btn btn-outline-primary btn-lg">
-                                Makaleleri İncele
-                            </a>
+    <!-- MAIN CONTENT -->
+    <section class="front-main">
+        <div class="front-container main-grid">
+
+            <!-- LEFT CONTENT -->
+            <div class="main-left">
+
+                <!-- ABOUT -->
+                <section id="about" class="content-card about-card">
+                    <div class="section-heading">
+                        <span>Hakkında</span>
+                        <h2>@Model.AboutTitle</h2>
+                    </div>
+
+                    <p>@Model.AboutContent</p>
+                </section>
+
+                <!-- LATEST ARTICLES -->
+                <section id="latest-articles" class="content-card">
+                    <div class="section-heading section-heading-row">
+                        <div>
+                            <span>Yayınlar</span>
+                            <h2>Son Yayınlanan Makaleler</h2>
                         </div>
+
+                        <a asp-controller="Issues" asp-action="Published" class="small-link">Tümünü Gör</a>
                     </div>
 
-                    <div id="about" class="content-card mb-4">
-                        <div class="section-title">@Model.AboutTitle</div>
-                        <p>@Model.AboutContent</p>
-                    </div>
-
-                    <div id="latest-articles" class="content-card">
-                        <div class="section-title">Son Yayınlanan Makaleler</div>
-
-                        @if (Model.LatestArticles.Any())
+                    <div class="article-list">
+                        @if (Model.LatestArticles != null && Model.LatestArticles.Any())
                         {
-                            @foreach (var article in Model.LatestArticles)
+                            foreach (var article in Model.LatestArticles)
                             {
-                                <div class="article-item">
-                                    <h5>@article.Title</h5>
-                                    <div class="article-meta">@article.Authors</div>
+                                <article class="article-item">
+                                    <div class="article-meta">
+                                        <span>Makale</span>
+                                    </div>
+
+                                    <h3>@article.Title</h3>
+
+                                    @if (!string.IsNullOrWhiteSpace(article.Authors))
+                                    {
+                                        <div class="article-author">
+                                            @article.Authors
+                                        </div>
+                                    }
 
                                     @if (!string.IsNullOrWhiteSpace(article.Abstract))
                                     {
-                                        <p>@(article.Abstract.Length > 220 ? article.Abstract.Substring(0, 220) + "..." : article.Abstract)</p>
+                                        <p>
+                                            @(article.Abstract.Length > 260
+                                                ? article.Abstract.Substring(0, 260) + "..."
+                                                : article.Abstract)
+                                        </p>
+                                    }
+                                </article>
+                            }
+                        }
+                        else
+                        {
+                            <div class="empty-state">
+                                Henüz yayımlanmış makale bulunmamaktadır.
+                            </div>
+                        }
+                    </div>
+                </section>
+
+                <!-- STATS -->
+                <section class="stats-grid">
+                    <div class="stat-card">
+                        <strong>@Model.TotalArticles</strong>
+                        <span>Yayınlanan Makale</span>
+                    </div>
+
+                    <div class="stat-card">
+                        <strong>@Model.TotalReviewers</strong>
+                        <span>Hakem</span>
+                    </div>
+
+                    <div class="stat-card">
+                        <strong>@Model.TotalIssues</strong>
+                        <span>Sayı</span>
+                    </div>
+
+                    <div class="stat-card">
+                        <strong>@(Model.Indexes == null ? 0 : Model.Indexes.Count())</strong>
+                        <span>İndeks</span>
+                    </div>
+                </section>
+
+            </div>
+
+            <!-- RIGHT SIDEBAR -->
+            <aside class="main-right">
+
+                <!-- SUBMISSION CARD -->
+                <section class="submit-card">
+                    <h2>Makale Gönderimi</h2>
+                    <p>
+                        Dergimize makale göndermek için sisteme giriş yaparak başvuru sürecinizi başlatabilirsiniz.
+                    </p>
+
+                    @if (User.Identity != null && User.Identity.IsAuthenticated)
+                    {
+                        <a asp-controller="Submission" asp-action="YeniMakale">Makale Gönder</a>
+                    }
+                    else
+                    {
+                        <a href="/Identity/Account/Login">Giriş Yap ve Makale Gönder</a>
+                    }
+                </section>
+
+                <!-- ANNOUNCEMENTS -->
+                <section id="announcements" class="side-card">
+                    <div class="side-title">
+                        <h3>Duyurular</h3>
+                    </div>
+
+                    <div class="announcement-list">
+                        @if (Model.Announcements != null && Model.Announcements.Any())
+                        {
+                            foreach (var ann in Model.Announcements)
+                            {
+                                <div class="announcement-item">
+                                    <strong>@ann.Title</strong>
+
+                                    @if (!string.IsNullOrWhiteSpace(ann.Content))
+                                    {
+                                        <span>@ann.Content</span>
                                     }
                                 </div>
                             }
                         }
                         else
                         {
-                            <p>Yayınlanmış makale bulunmamaktadır.</p>
+                            <div class="empty-state">
+                                Duyuru bulunmamaktadır.
+                            </div>
                         }
                     </div>
-                </div>
+                </section>
 
-                <div class="col-lg-4">
-                    <div class="stats-card mb-4">
-                        <div class="stats-grid">
-                            <div class="stat-item">
-                                <h3>@Model.TotalArticles</h3>
-                                <p>Makale</p>
-                            </div>
-                            <div class="stat-item">
-                                <h3>@Model.TotalIssues</h3>
-                                <p>Sayı</p>
-                            </div>
-                            <div class="stat-item">
-                                <h3>@Model.TotalReviewers</h3>
-                                <p>Hakem</p>
-                            </div>
-                            <div class="stat-item">
-                                <h3>@Model.TotalAuthors</h3>
-                                <p>Yazar</p>
-                            </div>
-                        </div>
+                <!-- INDEXES -->
+                <section id="indexes" class="side-card">
+                    <div class="side-title">
+                        <h3>İndeksler</h3>
                     </div>
 
-                    <div id="announcements" class="sidebar-card mb-4">
-                        <div class="section-title">Duyurular</div>
-
-                        @if (Model.Announcements.Any())
-                        {
-                            @foreach (var ann in Model.Announcements)
+                    @if (Model.Indexes != null && Model.Indexes.Any())
+                    {
+                        <div class="index-list">
+                            @foreach (var index in Model.Indexes)
                             {
-                                <div class="mb-3">
-                                    <strong>@ann.Title</strong>
-                                    <div style="font-size: 0.9rem; color:#6b7c8f;">
-                                        @ann.Content
-                                    </div>
-                                </div>
-                            }
-                        }
-                        else
-                        {
-                            <p>Duyuru bulunmamaktadır.</p>
-                        }
-                    </div>
-
-                    <div class="sidebar-card mb-4 text-center">
-                        <div class="section-title">Makale Gönderimi</div>
-                        <p>Makalenizi çevrim içi dergi yönetim sistemi üzerinden gönderebilirsiniz.</p>
-                        <a asp-controller="Submission" asp-action="YeniMakale" class="btn btn-success w-100">
-                            Makale Gönder
-                        </a>
-                    </div>
-
-                    <div id="indexes" class="sidebar-card mb-4">
-                        <div class="section-title">İndeksler</div>
-
-                        @if (Model.Indexes.Any())
-                        {
-                            <div class="index-list">
-                                @foreach (var index in Model.Indexes)
+                                if (!string.IsNullOrWhiteSpace(index.Url))
                                 {
-                                    <a href="@index.Url" target="_blank" class="index-item">
+                                    <a href="@index.Url" target="_blank" class="index-link">
                                         @if (!string.IsNullOrWhiteSpace(index.LogoPath))
                                         {
                                             <img src="@index.LogoPath" alt="@index.Name" />
@@ -432,76 +343,99 @@
                                         }
                                     </a>
                                 }
-                            </div>
-                        }
-                        else
-                        {
-                            <p class="mb-0">İndeks bilgisi henüz eklenmemiştir.</p>
-                        }
+                                else
+                                {
+                                    <span>
+                                        @if (!string.IsNullOrWhiteSpace(index.LogoPath))
+                                        {
+                                            <img src="@index.LogoPath" alt="@index.Name" />
+                                        }
+                                        else
+                                        {
+                                            @index.Name
+                                        }
+                                    </span>
+                                }
+                            }
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="empty-state">
+                            İndeks bilgisi henüz eklenmemiştir.
+                        </div>
+                    }
+                </section>
+
+                <!-- QUICK LINKS -->
+                <section class="side-card">
+                    <div class="side-title">
+                        <h3>Hızlı Bağlantılar</h3>
                     </div>
 
-                    <div class="sidebar-card">
-                        <div class="section-title">Hızlı Bağlantılar</div>
-                        <ul class="footer-links">
-                            <li><a href="#about">Dergi Hakkında</a></li>
-                            <li><a asp-controller="Issues" asp-action="Published">Yayınlanan Sayılar</a></li>
-                            <li><a asp-controller="Submission" asp-action="YeniMakale">Makale Gönder</a></li>
-                        </ul>
+                    <div class="quick-links">
+                        <a href="#about">Dergi Hakkında</a>
+                        <a asp-controller="Issues" asp-action="Published">Yayınlanan Sayılar</a>
+                        <a href="#latest-articles">Son Makaleler</a>
+                        <a href="#announcements">Duyurular</a>
+                        <a href="#contact">İletişim</a>
                     </div>
-                </div>
+                </section>
 
-            </div>
+            </aside>
+
         </div>
     </section>
 
-    <footer id="contact" class="journal-footer">
-        <div class="container">
-            <div class="row g-4">
-                <div class="col-md-4">
-                    <h5>@Model.JournalTitle</h5>
-                    <p>@Model.FooterText</p>
-                </div>
-
-                <div class="col-md-4">
-                    <h5>İletişim</h5>
-                    @if (!string.IsNullOrWhiteSpace(Model.ContactEmail))
-                    {
-                        <p>E-posta: @Model.ContactEmail</p>
-                    }
-                    @if (!string.IsNullOrWhiteSpace(Model.ContactPhone))
-                    {
-                        <p>Telefon: @Model.ContactPhone</p>
-                    }
-                    @if (!string.IsNullOrWhiteSpace(Model.Address))
-                    {
-                        <p>Adres: @Model.Address</p>
-                    }
-                </div>
-
-                <div class="col-md-4">
-                    <h5>Hızlı Bağlantılar</h5>
-                    <ul class="footer-links">
-                        <li><a href="#about">Dergi Hakkında</a></li>
-                        <li><a asp-controller="Issues" asp-action="Published">Yayınlanan Sayılar</a></li>
-                        <li><a asp-controller="Submission" asp-action="YeniMakale">Makale Gönder</a></li>
-                    </ul>
-                </div>
+    <!-- FOOTER -->
+    <footer id="contact" class="front-footer">
+        <div class="front-container footer-grid">
+            <div>
+                <h3>@Model.JournalTitle</h3>
+                <p>@Model.FooterText</p>
             </div>
+
+            <div>
+                <h4>Bağlantılar</h4>
+                <a href="#about">Dergi Hakkında</a>
+                <a asp-controller="Issues" asp-action="Published">Yayınlanan Sayılar</a>
+                <a asp-controller="Submission" asp-action="YeniMakale">Makale Gönder</a>
+            </div>
+
+            <div>
+                <h4>İletişim</h4>
+
+                @if (!string.IsNullOrWhiteSpace(Model.ContactEmail))
+                {
+                    <p>E-posta: @Model.ContactEmail</p>
+                }
+
+                @if (!string.IsNullOrWhiteSpace(Model.ContactPhone))
+                {
+                    <p>Telefon: @Model.ContactPhone</p>
+                }
+
+                @if (!string.IsNullOrWhiteSpace(Model.Address))
+                {
+                    <p>Adres: @Model.Address</p>
+                }
+            </div>
+        </div>
+
+        <div class="footer-bottom">
+            © @DateTime.Now.Year @Model.JournalTitle. Tüm hakları saklıdır.
         </div>
     </footer>
 
-    @if (Model.Announcements.Any(x => x.ShowAsPopup))
+    @if (Model.Announcements != null && Model.Announcements.Any(x => x.ShowAsPopup))
     {
         var popup = Model.Announcements.First(x => x.ShowAsPopup);
 
-        <div id="announcementModal"
-             style="position:fixed; inset:0; width:100vw; height:100vh; background:rgba(0,0,0,.6); display:flex; align-items:center; justify-content:center; z-index:99999;">
-
-            <div style="position:relative; background:#fff; padding:30px; border-radius:12px; max-width:500px; width:90%; text-align:center; box-shadow:0 20px 50px rgba(0,0,0,.2);">
-
+        <div id="announcementModal" class="announcement-modal">
+            <div class="announcement-modal-box">
                 <button type="button"
                         onclick="closePopup()"
-                        style="position:absolute; top:10px; right:15px; border:none; background:none; font-size:20px; cursor:pointer;">
+                        class="announcement-modal-close">
                     ✖
                 </button>
 
@@ -520,5 +454,5 @@
                 }
         </script>
     }
-</body>
-</html>
+
+</div>
