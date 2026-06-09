@@ -27,6 +27,17 @@ namespace MyDergiApp.Models
         public int SortOrder { get; set; } = 0;
 
         public DateTime AddedAt { get; set; } = DateTime.UtcNow;
+        [StringLength(250)]
+        public string? Doi { get; set; }
+
+        public string? AbstractOverride { get; set; }
+
+        [StringLength(500)]
+        public string? Keywords { get; set; }
+
+        public string? PdfFilePath { get; set; }
+
+        public string? OriginalFilePath { get; set; }
 
         [NotMapped]
         public string DisplayTitle => !string.IsNullOrWhiteSpace(TitleOverride)

@@ -9,7 +9,11 @@
     <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
     <link rel="stylesheet" href="https://cdn.datatables.net/1.13.8/css/dataTables.bootstrap5.min.css" />
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" />
-    <link rel="stylesheet" href="~/css/frontpage.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/css/admin.css" asp-append-version="true" />
+    @if (ViewContext.RouteData.Values["controller"]?.ToString() == "Home")
+    {
+        <link rel="stylesheet" href="~/css/frontpage.css" asp-append-version="true" />
+    }
 </head>
 <body>
     @{
@@ -306,7 +310,7 @@
                         <div class="alert alert-danger">@TempData["Error"]</div>
                     }
 
-                    <main role="main" class="content-area py-4">
+                    <main role="main">
                         @RenderBody()
                     </main>
                 </main>

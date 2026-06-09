@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
 using MyDergiApp.Entities;
 using MyDergiApp.Models;
+using System.Reflection.Emit;
 
 namespace MyDergiApp.Data;
 
@@ -23,6 +24,7 @@ public class AppDbContext : IdentityDbContext<AppUser>
     public DbSet<SubmissionFile> SubmissionFiles { get; set; }
     public DbSet<SubmissionAuthor> SubmissionAuthors { get; set; }
     public DbSet<PublishedArticle> PublishedArticles { get; set; }
+    public DbSet<IssueArticle> IssueArticles { get; set; }
 
 
     protected override void OnModelCreating(ModelBuilder builder)
@@ -90,5 +92,16 @@ public class AppDbContext : IdentityDbContext<AppUser>
             .WithMany()
             .HasForeignKey(sf => sf.UploadedByUserId)
             .OnDelete(DeleteBehavior.SetNull);
+        builder.Entity<IssueArticle>()
+            .HasOne(x => x.Issue)
+            .WithMany(x => x.IssueArticles)
+            .HasForeignKey(x => x.IssueId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        builder.Entity<IssueArticle>()
+            .HasOne(x => x.Submission)
+            .WithMany()
+            .HasForeignKey(x => x.SubmissionId)
+            .OnDelete(DeleteBehavior.Restrict);
     }
 }

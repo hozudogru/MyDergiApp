@@ -1,79 +1,130 @@
 @model MyDergiApp.Models.Issue
 
 @{
-    ViewData["Title"] = "Sayı Detayı";
+    Layout = "~/Views/Shared/_FrontLayout.cshtml";
+    ViewData["Title"] = $"Cilt {Model.Volume} Sayı {Model.Number} ({Model.Year})";
 }
 
-<div class="container py-5">
-    <div class="mb-4">
-        <h1 class="fw-bold">
-            @Model.Year - Cilt @Model.Volume, Sayı @Model.Number
-        </h1>
+<div class="journal-home">
 
-        @if (!string.IsNullOrWhiteSpace(Model.Title))
-        {
-            <p class="lead text-muted">@Model.Title</p>
-        }
-    </div>
+    <section class="issue-detail-hero">
+        <div class="front-container">
+            <a asp-controller="Home" asp-action="Index" class="issue-back-link">← Ana Sayfa</a>
 
-    @if (Model.Articles != null && Model.Articles.Any())
-    {
-        <div class="list-group shadow-sm">
-            @foreach (var article in Model.Articles.OrderBy(a => a.SortOrder))
+            <h1>Cilt @Model.Volume Sayı @Model.Number (@Model.Year)</h1>
+
+            @if (!string.IsNullOrWhiteSpace(Model.Title) && Model.Title != Model.Number)
             {
-                <div class="list-group-item p-4">
-                    <h5 class="fw-bold mb-2">@article.DisplayTitle</h5>
-
-                    <div class="text-muted mb-2">
-                        @(string.IsNullOrWhiteSpace(article.AuthorsText) ? "-" : article.AuthorsText)
-                    </div>
-
-                    @if (!string.IsNullOrWhiteSpace(article.Pages))
-                    {
-                        <div class="small text-muted mb-2">
-                            Sayfa: @article.Pages
-                        </div>
-                    }
-
-                    @if (!string.IsNullOrWhiteSpace(article.Submission?.Abstract))
-                    {
-                        <p class="mb-0">
-                            @article.Submission.Abstract
-                        </p>
-                    }
-                    @{
-                        var mainFile = article.Submission?.Files?
-                            .Where(f => f.FileType == "RevizyonDosyasi" || f.FileType == "MakaleDosyasi")
-                            .OrderByDescending(f => f.UploadedAt)
-                            .FirstOrDefault();
-                    }
-
-                    @if (mainFile != null)
-                    {
-                        <div class="mt-3">
-                            <a asp-controller="Submission"
-                               asp-action="DownloadPublishedFile"
-                               asp-route-id="@mainFile.Id"
-                               target="_blank"
-                               class="btn btn-sm btn-outline-primary">
-                                Makale Dosyasını İndir
-                            </a>
-                        </div>
-                    }
-                </div>
+                <p>@Model.Title</p>
             }
         </div>
-    }
-    else
-    {
-        <div class="alert alert-info">
-            Bu sayıda henüz makale bulunmamaktadır.
-        </div>
-    }
+    </section>
 
-    <div class="mt-4">
-        <a asp-action="Published" class="btn btn-secondary">
-            Yayınlanan Sayılara Dön
-        </a>
-    </div>
+    <section class="issue-detail-main">
+        <div class="front-container">
+
+            <div class="issue-detail-card">
+                <div class="section-heading">
+                    <span>İçindekiler</span>
+                    <h2>Yayınlanan Makaleler</h2>
+                </div>
+
+                @if (Model.Articles != null && Model.Articles.Any())
+                {
+                    var articles = Model.Articles
+                        .OrderBy(a => a.SortOrder)
+                        .ToList();
+
+                    var orderNo = 1;
+
+                    <div class="published-article-list">
+                        @foreach (var article in articles)
+                        {
+                            var title = !string.IsNullOrWhiteSpace(article.TitleOverride)
+                                ? article.TitleOverride
+                                : article.Submission?.Title;
+
+                            var authors = !string.IsNullOrWhiteSpace(article.AuthorsText)
+                                ? article.AuthorsText
+                                : "Yazar bilgisi belirtilmemiş";
+
+                            var abstractText = !string.IsNullOrWhiteSpace(article.AbstractOverride)
+                                ? article.AbstractOverride
+                                : article.Submission?.Abstract;
+
+                            <article class="published-article-item">
+
+                                <div class="published-article-main">
+
+                                    <div class="article-order-label">
+                                        Makale @orderNo
+                                    </div>
+
+                                    <h3>
+                                        @(string.IsNullOrWhiteSpace(title) ? "Başlık belirtilmemiş" : title)
+                                    </h3>
+
+                                    <div class="published-article-authors">
+                                        @authors
+                                    </div>
+
+                                    <div class="published-article-meta">
+                                        @if (!string.IsNullOrWhiteSpace(article.Pages))
+                                        {
+                                            <span>Sayfa: @article.Pages</span>
+                                        }
+
+                                        @if (!string.IsNullOrWhiteSpace(article.Doi))
+                                        {
+                                            <span>DOI: @article.Doi</span>
+                                        }
+                                    </div>
+
+                                    @if (!string.IsNullOrWhiteSpace(abstractText))
+                                    {
+                                        <p>
+                                            @(abstractText.Length > 350
+                                                ? abstractText.Substring(0, 350) + "..."
+                                                : abstractText)
+                                        </p>
+                                    }
+
+                                    @if (!string.IsNullOrWhiteSpace(article.Keywords))
+                                    {
+                                        <div class="published-keywords">
+                                            <strong>Anahtar Kelimeler:</strong> @article.Keywords
+                                        </div>
+                                    }
+                                </div>
+
+                                <div class="published-article-actions">
+                                    @if (!string.IsNullOrWhiteSpace(article.PdfFilePath))
+                                    {
+                                        <a href="@article.PdfFilePath" target="_blank" class="pdf-btn">
+                                            PDF
+                                        </a>
+                                    }
+                                    else
+                                    {
+                                        <span class="pdf-missing">PDF yok</span>
+                                    }
+                                </div>
+
+                            </article>
+
+                            orderNo++;
+                        }
+                    </div>
+                }
+                else
+                {
+                    <div class="empty-state">
+                        Bu sayıda yayımlanmış makale bulunmamaktadır.
+                    </div>
+                }
+            </div>
+
+        </div>
+    </section>
+
 </div>

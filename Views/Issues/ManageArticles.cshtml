@@ -1,129 +1,397 @@
 @model MyDergiApp.Models.Issue
-@using MyDergiApp.Models
 
 @{
-    ViewData["Title"] = "Sayı Makaleleri";
-    var acceptedSubmissions = ViewBag.AcceptedSubmissions as List<Submission> ?? new List<Submission>();
+    ViewData["Title"] = "Sayı Yönetimi";
+
+    var acceptedSubmissions = ViewBag.AcceptedSubmissions as List<MyDergiApp.Models.Submission>
+        ?? new List<MyDergiApp.Models.Submission>();
+
+    var groupedArticles = (Model.Articles ?? new List<MyDergiApp.Models.PublishedArticle>())
+    .OrderBy(x => x.SortOrder)
+    .GroupBy(x => "Araştırma Makalesi")
+    .ToList();
 }
 
-<div class="card border-0 shadow-sm mb-4">
-    <div class="card-header bg-white border-0 py-3 d-flex justify-content-between align-items-center">
+<div class="issue-admin-page">
+
+    <div class="issue-admin-header">
         <div>
-            <h3 class="mb-0 fw-bold">Sayı Makaleleri</h3>
-            <div class="text-muted">
-                @Model.Year · Cilt @Model.Volume · Sayı @Model.Number
-            </div>
+            <h1>Sayı Yönetimi: Cilt @Model.Volume Sayı @Model.Number (@Model.Year)</h1>
+            <p>Bu sayının içindekiler, sayı verisi, dosya ve tanımlayıcı işlemlerini yönetin.</p>
         </div>
 
-        <a asp-action="Index" class="btn btn-secondary">
+        <a asp-action="Index" class="issue-secondary-btn">
             Sayılara Dön
         </a>
     </div>
 
-    <div class="card-body">
-        @if (TempData["Success"] != null)
-        {
-            <div class="alert alert-success">@TempData["Success"]</div>
-        }
+    
 
-        @if (TempData["Error"] != null)
-        {
-            <div class="alert alert-danger">@TempData["Error"]</div>
-        }
+    <div class="issue-tabs">
+        <button type="button" class="issue-tab active" onclick="openManageTab(event, 'contentsTab')">
+            İçindekiler
+        </button>
 
-        <h5 class="fw-bold mb-3">Bu Sayıdaki Makaleler</h5>
+        <button type="button" class="issue-tab" onclick="openManageTab(event, 'dataTab')">
+            Sayı Verisi
+        </button>
 
-        @if (Model.Articles != null && Model.Articles.Any())
-        {
-            <div class="table-responsive mb-4">
-                <table class="table align-middle">
-                    <thead>
-                        <tr>
-                            <th>Sıra</th>
-                            <th>Makale</th>
-                            <th>Yazarlar</th>
-                            <th>Sayfa</th>
-                            <th class="text-end">İşlem</th>
-                        </tr>
-                    </thead>
+        <button type="button" class="issue-tab" onclick="openManageTab(event, 'galleysTab')">
+            Sayı Dizgileri
+        </button>
 
-                    <tbody>
-                        @foreach (var article in Model.Articles.OrderBy(a => a.SortOrder))
+        <button type="button" class="issue-tab" onclick="openManageTab(event, 'identifierTab')">
+            Tanımlayıcılar
+        </button>
+    </div>
+
+    <!-- İÇİNDEKİLER -->
+    <div id="contentsTab" class="issue-tab-panel active">
+        <div class="issue-panel-card">
+
+            <div class="issue-panel-title issue-panel-title-between">
+                <h2>İçindekiler</h2>
+
+                <button type="button" class="issue-primary-btn" onclick="toggleAddArticleBox()">
+                    Makale Ekle
+                </button>
+            </div>
+
+            <div id="addArticleBox" class="issue-add-box" style="display:none;">
+                <h3>Kabul Edilmiş Makalelerden Ekle</h3>
+
+                @if (acceptedSubmissions.Any())
+                {
+                    <form asp-action="AddArticle" method="post">
+                        @Html.AntiForgeryToken()
+
+                        <input type="hidden" name="issueId" value="@Model.Id" />
+
+                        <div class="issue-form-grid">
+                            <div>
+                                <label>Makale</label>
+                                <select name="submissionId" class="form-control" required>
+                                    <option value="">Makale seçiniz</option>
+                                    @foreach (var submission in acceptedSubmissions)
+                                    {
+                                        <option value="@submission.Id">
+                                            @submission.Title
+                                        </option>
+                                    }
+                                </select>
+                            </div>
+
+                            <div>
+                                <label>Sayfa Aralığı</label>
+                                <input type="text" name="pages" class="form-control" placeholder="Örn: 15-32" />
+                            </div>
+
+                            <div class="issue-form-action">
+                                <button type="submit" class="issue-primary-btn">
+                                    Sayıya Ekle
+                                </button>
+                            </div>
+                        </div>
+                    </form>
+                }
+                else
+                {
+                    <div class="issue-empty">
+                        Sayıya eklenebilecek kabul edilmiş makale bulunmamaktadır.
+                    </div>
+                }
+            </div>
+
+            @if (Model.Articles != null && Model.Articles.Any())
+            {
+                foreach (var group in groupedArticles)
+                {
+                    <h3 class="issue-section-title">@group.Key</h3>
+
+                    <div id="sortableArticles" class="issue-sortable-list">
+                        @foreach (var article in group)
                         {
-                            <tr>
-                                <td>@article.SortOrder</td>
-                                <td>@article.DisplayTitle</td>
-                                <td>@(string.IsNullOrWhiteSpace(article.AuthorsText) ? "-" : article.AuthorsText)</td>
-                                <td>@(string.IsNullOrWhiteSpace(article.Pages) ? "-" : article.Pages)</td>
-                                <td class="text-end">
+                            var title = !string.IsNullOrWhiteSpace(article.TitleOverride)
+                                ? article.TitleOverride
+                                : article.Submission?.Title;
+
+                            <div class="issue-article-row" data-article-id="@article.Id">
+                                <div class="issue-drag-handle" title="Sürükle bırak">
+                                    ☰
+                                </div>
+
+                                <div class="issue-article-main">
+                                    <h4>@title</h4>
+
+                                    @if (!string.IsNullOrWhiteSpace(article.AuthorsText))
+                                    {
+                                        <p>@article.AuthorsText</p>
+                                    }
+
+                                    <div class="issue-article-meta">
+                                        @if (!string.IsNullOrWhiteSpace(article.Pages))
+                                        {
+                                            <span>Sayfa: @article.Pages</span>
+                                        }
+
+                                        @if (!string.IsNullOrWhiteSpace(article.Doi))
+                                        {
+                                            <span>DOI: @article.Doi</span>
+                                        }
+
+                                        @if (!string.IsNullOrWhiteSpace(article.PdfFilePath))
+                                        {
+                                            <span>PDF yüklü</span>
+                                        }
+
+                                        <span class="sort-order-label">Sıra: @article.SortOrder</span>
+                                    </div>
+                                </div>
+
+                                <div class="issue-article-actions">
+                                    <a asp-action="EditPublishedArticle" asp-route-id="@article.Id">
+                                        Üst Veri
+                                    </a>
+
+                                    <a asp-action="EditPublishedArticleFile" asp-route-id="@article.Id">
+                                        PDF / Dosya
+                                    </a>
+
+                                    @if (!string.IsNullOrWhiteSpace(article.PdfFilePath))
+                                    {
+                                        <a href="@article.PdfFilePath" target="_blank">
+                                            PDF Gör
+                                        </a>
+                                    }
+
+                                    @if (article.Submission != null)
+                                    {
+                                        <a asp-controller="Submission"
+                                           asp-action="Details"
+                                           asp-route-id="@article.Submission.Id">
+                                            Gönderi
+                                        </a>
+                                    }
+
                                     <form asp-action="RemoveArticle"
                                           asp-route-id="@article.Id"
                                           method="post"
-                                          onsubmit="return confirm('Makale sayıdan çıkarılsın mı?');">
+                                          onsubmit="return confirm('Bu makale sayıdan çıkarılsın mı?');">
                                         @Html.AntiForgeryToken()
-                                        <button type="submit" class="btn btn-sm btn-outline-danger">
-                                            Çıkar
+                                        <button type="submit" class="danger-link">
+                                            Sayıdan Çıkar
                                         </button>
                                     </form>
-                                </td>
-                            </tr>
+                                </div>
+                            </div>
                         }
-                    </tbody>
-                </table>
-            </div>
-        }
-        else
-        {
-            <div class="alert alert-info">
-                Bu sayıya henüz makale eklenmemiş.
-            </div>
-        }
+                    </div>
+                }
+            }
+            else
+            {
+                <div class="issue-empty">
+                    Bu sayıya henüz makale eklenmemiştir.
+                </div>
+            }
+        </div>
+    </div>
 
-        <hr />
+    <!-- SAYI VERİSİ -->
+    <div id="dataTab" class="issue-tab-panel">
+        <div class="issue-panel-card">
+            <h2>Sayı Verisi</h2>
 
-        <h5 class="fw-bold mb-3">Kabul Edilen Makaleyi Sayıya Ekle</h5>
-
-        @if (acceptedSubmissions.Any())
-        {
-            <form asp-action="AddArticle" method="post" class="row g-2 align-items-end">
+            <form asp-action="UpdateIssueData"
+                  asp-route-id="@Model.Id"
+                  method="post"
+                  enctype="multipart/form-data">
                 @Html.AntiForgeryToken()
 
-                <input type="hidden" name="issueId" value="@Model.Id" />
+                <input type="hidden" asp-for="Id" />
 
-                <div class="col-md-8">
-                    <label class="form-label fw-semibold">Makale</label>
-                    <select name="submissionId" class="form-select" required>
-                        <option value="">Makale seçiniz</option>
-                        @foreach (var submission in acceptedSubmissions)
-                        {
-                            var authors = submission.Authors != null && submission.Authors.Any()
-                                ? string.Join(", ", submission.Authors.OrderBy(a => a.SortOrder).Select(a => a.FullName))
-                                : "-";
+                <div class="issue-form-grid issue-form-grid-3">
+                    <div>
+                        <label>Cilt</label>
+                        <input asp-for="Volume" class="form-control" />
+                    </div>
 
-                            <option value="@submission.Id">
-                                #@submission.Id - @submission.Title (@authors)
-                            </option>
-                        }
-                    </select>
+                    <div>
+                        <label>Sayı</label>
+                        <input asp-for="Number" class="form-control" />
+                    </div>
+
+                    <div>
+                        <label>Yıl</label>
+                        <input asp-for="Year" class="form-control" />
+                    </div>
                 </div>
 
-                <div class="col-md-2">
-                    <label class="form-label fw-semibold">Sayfa</label>
-                    <input name="pages" class="form-control" placeholder="1-12" />
+                <div class="issue-form-group">
+                    <label>Başlık</label>
+                    <input asp-for="Title" class="form-control" />
                 </div>
 
-                <div class="col-md-2">
-                    <button type="submit" class="btn btn-primary w-100">
-                        Ekle
+                <div class="issue-form-group">
+                    <label>Başlık</label>
+                    <input asp-for="Title" class="form-control" />
+                </div>
+
+                <div class="issue-form-group">
+                    <label>Dergi Kapağı</label>
+                    <input type="file"
+                           name="coverImage"
+                           accept=".jpg,.jpeg,.png,.webp"
+                           class="form-control" />
+
+                    @if (!string.IsNullOrWhiteSpace(Model.CoverImagePath))
+                    {
+                        <div class="issue-cover-preview">
+                            <img src="@Model.CoverImagePath" alt="Dergi Kapağı" />
+                        </div>
+                    }
+                </div>
+
+                <div class="issue-form-group">
+                    <label>Yayın Durumu</label>
+                    <div class="issue-check-row">
+                        <input asp-for="IsPublished" />
+                        <span>Bu sayıyı yayında göster</span>
+                    </div>
+                </div>
+                <button type="submit" class="issue-primary-btn">
+                    Kaydet
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <!-- SAYI DİZGİLERİ -->
+    <div id="galleysTab" class="issue-tab-panel">
+        <div class="issue-panel-card">
+
+            <div class="issue-panel-title issue-panel-title-between">
+                <div>
+                    <h2>Sayı Dizgileri</h2>
+                    <p>Bu bölümden tam sayı PDF dosyasını yükleyebilir veya değiştirebilirsiniz.</p>
+                </div>
+            </div>
+
+            <form asp-action="UpdateIssueGalley"
+                  asp-route-id="@Model.Id"
+                  method="post"
+                  enctype="multipart/form-data">
+
+                @Html.AntiForgeryToken()
+
+                <div class="issue-form-group">
+                    <label>Tam Sayı PDF Dosyası</label>
+                    <input type="file"
+                           name="fullIssuePdf"
+                           accept=".pdf"
+                           class="form-control" />
+
+                    @if (!string.IsNullOrWhiteSpace(Model.FullIssuePdfPath))
+                    {
+                        <div class="issue-file-current">
+                            Mevcut tam sayı PDF:
+                            <a href="@Model.FullIssuePdfPath" target="_blank">Görüntüle</a>
+                        </div>
+                    }
+                </div>
+
+                <div class="issue-form-actions">
+                    <button type="submit" class="issue-primary-btn">
+                        Tam Sayı PDF Kaydet
                     </button>
+
+                    @if (!string.IsNullOrWhiteSpace(Model.FullIssuePdfPath))
+                    {
+                        <a href="@Model.FullIssuePdfPath"
+                           target="_blank"
+                           class="issue-secondary-btn">
+                            PDF Gör
+                        </a>
+                    }
                 </div>
             </form>
-        }
-        else
-        {
-            <div class="alert alert-warning">
-                Sayıya eklenebilecek kabul edilmiş yeni makale bulunmuyor.
-            </div>
-        }
+
+        </div>
     </div>
+
+    <!-- TANIMLAYICILAR -->
+    <div id="identifierTab" class="issue-tab-panel">
+        <div class="issue-panel-card">
+            <h2>Tanımlayıcılar</h2>
+
+            <h3>DOI</h3>
+            <p>
+                Bu bölümde sayı ve sayı içindeki makale DOI bilgileri yönetilecek.
+            </p>
+
+            <div class="issue-empty">
+                DOI ve tanımlayıcı yönetimi daha sonra aktif hale getirilecektir.
+            </div>
+        </div>
+    </div>
+
 </div>
+
+<script>
+    function openManageTab(event, panelId) {
+        document.querySelectorAll(".issue-tab").forEach(x => x.classList.remove("active"));
+        document.querySelectorAll(".issue-tab-panel").forEach(x => x.classList.remove("active"));
+
+        event.currentTarget.classList.add("active");
+        document.getElementById(panelId).classList.add("active");
+    }
+
+    function toggleAddArticleBox() {
+        const box = document.getElementById("addArticleBox");
+        if (!box) return;
+
+        box.style.display = box.style.display === "none" ? "block" : "none";
+    }
+</script>
+<script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.2/Sortable.min.js"></script>
+
+<script>
+    document.addEventListener("DOMContentLoaded", function () {
+    const sortableList = document.getElementById("sortableArticles");
+
+    if (!sortableList) return;
+
+    new Sortable(sortableList, {
+    animation: 180,
+    handle: ".issue-drag-handle",
+    ghostClass: "issue-sort-ghost",
+
+    onEnd: function () {
+    const orderedIds = Array.from(sortableList.querySelectorAll(".issue-article-row"))
+    .map(x => parseInt(x.getAttribute("data-article-id")));
+
+    fetch("/Issues/UpdateArticleOrder", {
+    method: "POST",
+    headers: {
+    "Content-Type": "application/json",
+    "RequestVerificationToken": document.querySelector('input[name="__RequestVerificationToken"]').value
+    },
+    body: JSON.stringify(orderedIds)
+    })
+    .then(response => {
+    if (!response.ok) {
+    alert("Sıralama kaydedilemedi.");
+    return;
+    }
+
+    document.querySelectorAll(".sort-order-label").forEach((x, index) => {
+    x.textContent = "Sıra: " + (index + 1);
+    });
+    })
+    .catch(() => {
+    alert("Sıralama kaydedilirken hata oluştu.");
+    });
+    }
+    });
+    });
+</script>

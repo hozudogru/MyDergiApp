@@ -1,0 +1,182 @@
+﻿@model MyDergiApp.Models.Issue
+
+@{
+    ViewData["Title"] = "Sayı Yönetimi";
+    Layout = "~/Views/Shared/_AdminLayout.cshtml";
+}
+
+<div class="admin-page">
+    <div class="admin-page-header">
+        <div>
+            <h1>Sayı Yönetimi: Cilt @Model.Volume Sayı @Model.Number (@Model.Year)</h1>
+            <p>Bu sayıya ait makaleleri, üst verileri, dosyaları ve tanımlayıcıları yönetin.</p>
+        </div>
+
+        <a asp-controller="AdminIssue" asp-action="Index" class="admin-secondary-btn">
+            Sayılara Dön
+        </a>
+    </div>
+
+    <div class="issue-tabs">
+        <button class="issue-tab active" onclick="showManageTab('contents')">İçindekiler</button>
+        <button class="issue-tab" onclick="showManageTab('data')">Sayı Verisi</button>
+        <button class="issue-tab" onclick="showManageTab('galleys')">Sayı Dizgileri</button>
+        <button class="issue-tab" onclick="showManageTab('identifiers')">Tanımlayıcılar</button>
+    </div>
+
+    <div id="contents" class="manage-tab-content active">
+        <div class="issue-card">
+            <div class="issue-card-header">
+                <h2>İçindekiler</h2>
+                <a asp-controller="AdminIssue" asp-action="AddArticle" asp-route-id="@Model.Id" class="admin-primary-btn">
+                    Makale Ekle
+                </a>
+            </div>
+
+            @{
+                var groupedArticles = Model.IssueArticles
+                    .OrderBy(x => x.DisplayOrder)
+                    .GroupBy(x => string.IsNullOrWhiteSpace(x.SectionTitle) ? "Araştırma Makalesi" : x.SectionTitle);
+            }
+
+            @if (Model.IssueArticles != null && Model.IssueArticles.Any())
+            {
+                foreach (var group in groupedArticles)
+                {
+                    <h3 class="article-section-title">@group.Key</h3>
+
+                    foreach (var item in group)
+                    {
+                        <div class="issue-article-row">
+                            <div>
+                                <h4>
+                                    @(string.IsNullOrWhiteSpace(item.PublishedTitle)
+                                        ? item.Submission?.Title
+                                        : item.PublishedTitle)
+                                </h4>
+
+                                <p>
+                                    @(string.IsNullOrWhiteSpace(item.PublishedAuthors)
+                                        ? ""
+                                        : item.PublishedAuthors)
+                                </p>
+
+                                @if (!string.IsNullOrWhiteSpace(item.PageRange))
+                                {
+                                    <span class="article-mini-info">Sayfa: @item.PageRange</span>
+                                }
+
+                                @if (!string.IsNullOrWhiteSpace(item.Doi))
+                                {
+                                    <span class="article-mini-info">DOI: @item.Doi</span>
+                                }
+                            </div>
+
+                            <div class="issue-article-actions">
+                                <a asp-controller="AdminIssue" asp-action="EditArticle" asp-route-id="@item.Id">Üst Veri</a>
+                                <a asp-controller="AdminIssue" asp-action="EditArticleFile" asp-route-id="@item.Id">Dosya</a>
+
+                                @if (!string.IsNullOrWhiteSpace(item.PdfFilePath))
+                                {
+                                    <a href="@item.PdfFilePath" target="_blank">PDF Gör</a>
+                                }
+
+                                <form asp-controller="AdminIssue" asp-action="RemoveArticle" method="post">
+                                    @Html.AntiForgeryToken()
+                                    <input type="hidden" name="issueArticleId" value="@item.Id" />
+                                    <button type="submit" onclick="return confirm('Bu makale sayıdan çıkarılsın mı?')">
+                                        Sayıdan Çıkar
+                                    </button>
+                                </form>
+                            </div>
+                        </div>
+                    }
+                }
+            }
+            else
+            {
+                <div class="empty-state">
+                    Bu sayıya henüz makale eklenmemiştir.
+                </div>
+            }
+        </div>
+    </div>
+
+    <div id="data" class="manage-tab-content">
+        <div class="issue-card">
+            <h2>Sayı Verisi</h2>
+
+            <form asp-controller="AdminIssue" asp-action="UpdateIssueData" method="post">
+                @Html.AntiForgeryToken()
+                <input type="hidden" asp-for="Id" />
+
+                <div class="form-grid-3">
+                    <div>
+                        <label>Cilt</label>
+                        <input asp-for="Volume" class="form-control" />
+                    </div>
+
+                    <div>
+                        <label>Sayı</label>
+                        <input asp-for="Number" class="form-control" />
+                    </div>
+
+                    <div>
+                        <label>Yıl</label>
+                        <input asp-for="Year" class="form-control" />
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label>Başlık</label>
+                    <input asp-for="Title" class="form-control" />
+                </div>
+
+                <div class="form-group">
+                    <label>Yayın Durumu</label>
+                    <div style="display:flex; gap:8px; align-items:center;">
+                        <input asp-for="IsPublished" />
+                        <span>Bu sayı yayında gösterilsin</span>
+                    </div>
+                </div>
+
+                <button type="submit" class="admin-primary-btn">Kaydet</button>
+            </form>
+        </div>
+    </div>
+
+    <div id="galleys" class="manage-tab-content">
+        <div class="issue-card">
+            <h2>Sayı Dizgileri</h2>
+            <p>Burada tam sayı PDF dosyası veya kapak/sayı ek dosyaları yönetilebilir.</p>
+
+            <a asp-controller="AdminIssue" asp-action="UploadIssueGalley" asp-route-id="@Model.Id" class="admin-primary-btn">
+                Sayı Dizgisi Yarat
+            </a>
+        </div>
+    </div>
+
+    <div id="identifiers" class="manage-tab-content">
+        <div class="issue-card">
+            <h2>Tanımlayıcılar</h2>
+            <p>Bu alanda DOI, sayı nesne DOI temizliği ve tanımlayıcı işlemleri yapılabilir.</p>
+
+            <form asp-controller="AdminIssue" asp-action="ClearIssueDoi" asp-route-id="@Model.Id" method="post">
+                @Html.AntiForgeryToken()
+                <button type="submit" class="danger-btn">
+                    Sayı nesneleri DOI'lerini temizle
+                </button>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+    function showManageTab(tabId) {
+        document.querySelectorAll('.issue-tab').forEach(x => x.classList.remove('active'));
+        document.querySelectorAll('.manage-tab-content').forEach(x => x.classList.remove('active'));
+
+        event.target.classList.add('active');
+        document.getElementById(tabId).classList.add('active');
+    }
+</script>

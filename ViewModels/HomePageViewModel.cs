@@ -57,6 +57,9 @@ namespace MyDergiApp.ViewModels
         public List<LatestArticleViewModel> LatestArticles { get; set; } = new();
         public List<Announcement> Announcements { get; set; } = new();
         public List<JournalIndex> Indexes { get; set; } = new();
+        public string? PdfFilePath { get; set; }
+
+        public int IssueId { get; set; }
     }
 
     public class CurrentIssueViewModel
@@ -69,14 +72,20 @@ namespace MyDergiApp.ViewModels
         public string? Description { get; set; }
         public string? CoverImagePath { get; set; }
         public DateTime? PublishedDate { get; set; }
-        
+        public string? FullIssuePdfPath { get; set; }
+
     }
 
     public class LatestArticleViewModel
     {
-        public int Id { get; set; }
-        public string Title { get; set; } = string.Empty;
+        public string? Title { get; set; }
+
         public string? Authors { get; set; }
+
         public string? Abstract { get; set; }
+
+        public string? PdfFilePath { get; set; }
+
+        public int IssueId { get; set; }
     }
 }

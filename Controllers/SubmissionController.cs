@@ -1613,18 +1613,18 @@ namespace MyDergiApp.Controllers
 
             var file = await _context.SubmissionFiles
                 .Include(f => f.Submission)
-                    .ThenInclude(s => s.Authors)
+                    .ThenInclude(s => s!.Authors)
                 .Include(f => f.Submission)
-                    .ThenInclude(s => s.SubmissionReviewers)
+                    .ThenInclude(s => s!.SubmissionReviewers)
                 .FirstOrDefaultAsync(f => f.Id == id);
 
             if (file == null)
                 return NotFound();
+            
+            if (file.Submission == null)
+                return NotFound();
 
             var submission = file.Submission;
-
-            if (submission == null)
-                return NotFound();
 
             var isAdmin = User.IsInRole("Admin");
 

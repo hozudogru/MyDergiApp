@@ -1,0 +1,83 @@
+﻿@model MyDergiApp.Models.PublishedArticle
+
+@{
+    ViewData["Title"] = "Makale Üst Verisi";
+}
+
+<div class="issue-admin-page">
+
+    <div class="issue-admin-header">
+        <div>
+            <h1>Makale Üst Verisi</h1>
+            <p>Makalenin sayı içinde yayımlanacak başlık, yazar ve sayfa bilgilerini düzenleyin.</p>
+        </div>
+
+        <a asp-action="ManageArticles" asp-route-id="@Model.IssueId" class="issue-secondary-btn">
+            Sayı Yönetimine Dön
+        </a>
+    </div>
+
+    <div class="issue-panel-card">
+        <form asp-action="EditPublishedArticle" asp-route-id="@Model.Id" method="post">
+            @Html.AntiForgeryToken()
+
+            <input type="hidden" asp-for="Id" />
+            <input type="hidden" asp-for="IssueId" />
+            <input type="hidden" asp-for="SubmissionId" />
+
+            <div class="issue-form-group">
+                <label>Asıl Başlık</label>
+                <div class="issue-readonly-box">
+                    @Model.Submission?.Title
+                </div>
+            </div>
+
+            <div class="issue-form-group">
+                <label>Yayımlanacak Başlık</label>
+                <input asp-for="TitleOverride" class="form-control" />
+                <small>Boş bırakılırsa gönderideki asıl başlık kullanılır.</small>
+            </div>
+
+            <div class="issue-form-group">
+                <label>Yazarlar</label>
+                <textarea asp-for="AuthorsText" class="form-control" rows="3"></textarea>
+            </div>
+
+            <div class="issue-form-grid issue-form-grid-3">
+                <div>
+                    <label>Sayfa Aralığı</label>
+                    <input asp-for="Pages" class="form-control" placeholder="Örn: 15-32" />
+                </div>
+
+                <div>
+                    <label>Sıra</label>
+                    <input asp-for="SortOrder" class="form-control" />
+                </div>
+            </div>
+            <div class="issue-form-group">
+    <label>DOI</label>
+    <input asp-for="Doi" class="form-control" placeholder="Örn: 10.xxxx/xxxxx" />
+</div>
+
+<div class="issue-form-group">
+    <label>Yayımlanacak Özet</label>
+    <textarea asp-for="AbstractOverride" class="form-control" rows="6"></textarea>
+    <small>Boş bırakılırsa gönderideki özet kullanılır.</small>
+</div>
+
+<div class="issue-form-group">
+    <label>Anahtar Kelimeler</label>
+    <input asp-for="Keywords" class="form-control" placeholder="Örn: turizm, finans, sürdürülebilirlik" />
+</div>
+            <div class="issue-form-actions">
+                <button type="submit" class="issue-primary-btn">
+                    Kaydet
+                </button>
+
+                <a asp-action="ManageArticles" asp-route-id="@Model.IssueId" class="issue-secondary-btn">
+                    İptal
+                </a>
+            </div>
+        </form>
+    </div>
+</div>

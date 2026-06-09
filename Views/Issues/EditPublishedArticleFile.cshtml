@@ -1,0 +1,78 @@
+﻿@model MyDergiApp.Models.PublishedArticle
+
+@{
+    ViewData["Title"] = "Makale Dosyaları";
+}
+
+<div class="issue-admin-page">
+
+    <div class="issue-admin-header">
+        <div>
+            <h1>Makale Dosyaları</h1>
+            <p>Makalenin yayımlanacak PDF ve kaynak dosyasını yönetin.</p>
+        </div>
+
+        <a asp-action="ManageArticles" asp-route-id="@Model.IssueId" class="issue-secondary-btn">
+            Sayı Yönetimine Dön
+        </a>
+    </div>
+
+    
+
+    <div class="issue-panel-card">
+
+        <div class="issue-form-group">
+            <label>Makale Başlığı</label>
+            <div class="issue-readonly-box">
+                @(string.IsNullOrWhiteSpace(Model.TitleOverride)
+                    ? Model.Submission?.Title
+                    : Model.TitleOverride)
+            </div>
+        </div>
+
+        <form asp-action="EditPublishedArticleFile"
+              asp-route-id="@Model.Id"
+              method="post"
+              enctype="multipart/form-data">
+
+            @Html.AntiForgeryToken()
+
+            <div class="issue-form-group">
+                <label>Yayımlanacak PDF Dosyası</label>
+                <input type="file" name="pdfFile" accept=".pdf" class="form-control" />
+
+                @if (!string.IsNullOrWhiteSpace(Model.PdfFilePath))
+                {
+                    <div class="issue-file-current">
+                        Mevcut PDF:
+                        <a href="@Model.PdfFilePath" target="_blank">Görüntüle</a>
+                    </div>
+                }
+            </div>
+
+            <div class="issue-form-group">
+                <label>Kaynak Makale Dosyası</label>
+                <input type="file" name="originalFile" accept=".doc,.docx,.pdf" class="form-control" />
+
+                @if (!string.IsNullOrWhiteSpace(Model.OriginalFilePath))
+                {
+                    <div class="issue-file-current">
+                        Mevcut kaynak dosya:
+                        <a href="@Model.OriginalFilePath" target="_blank">Görüntüle</a>
+                    </div>
+                }
+            </div>
+
+            <div class="issue-form-actions">
+                <button type="submit" class="issue-primary-btn">
+                    Dosyaları Kaydet
+                </button>
+
+                <a asp-action="ManageArticles" asp-route-id="@Model.IssueId" class="issue-secondary-btn">
+                    İptal
+                </a>
+            </div>
+        </form>
+
+    </div>
+</div>

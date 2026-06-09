@@ -16,6 +16,7 @@ namespace MyDergiApp.Models
 
         [StringLength(250)]
         public string? Title { get; set; }
+        public string? CoverImagePath { get; set; }
 
         public int Year { get; set; } = DateTime.UtcNow.Year;
 
@@ -26,7 +27,9 @@ namespace MyDergiApp.Models
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 
         public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
+        public string? FullIssuePdfPath { get; set; }
 
         public ICollection<PublishedArticle> Articles { get; set; } = new List<PublishedArticle>();
+        public ICollection<IssueArticle> IssueArticles { get; set; } = new List<IssueArticle>();
     }
 }

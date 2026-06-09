@@ -1,50 +1,81 @@
-@model IEnumerable<MyDergiApp.Models.Issue>
+@model List<MyDergiApp.Models.Issue>
 
 @{
+    Layout = "~/Views/Shared/_FrontLayout.cshtml";
     ViewData["Title"] = "Yayınlanan Sayılar";
 }
 
-<div class="container py-5">
-    <h1 class="fw-bold mb-4">Yayınlanan Sayılar</h1>
+<div class="journal-home">
 
-    @if (Model.Any())
-    {
-        <div class="row g-4">
-            @foreach (var issue in Model)
-            {
-                <div class="col-md-6 col-lg-4">
-                    <div class="card border-0 shadow-sm h-100">
-                        <div class="card-body">
-                            <h5 class="fw-bold">
-                                @issue.Year - Cilt @issue.Volume, Sayı @issue.Number
-                            </h5>
+    <section class="issue-detail-hero">
+        <div class="front-container">
+            <a asp-controller="Home" asp-action="Index" class="issue-back-link">← Ana Sayfa</a>
 
-                            @if (!string.IsNullOrWhiteSpace(issue.Title))
-                            {
-                                <p class="text-muted">@issue.Title</p>
-                            }
+            <h1>Yayınlanan Sayılar</h1>
+            <p>Derginin yayımlanmış tüm sayılarını bu sayfadan inceleyebilirsiniz.</p>
+        </div>
+    </section>
 
-                            <p class="mb-3">
-                                <span class="badge bg-primary">
-                                    @(issue.Articles?.Count ?? 0) makale
-                                </span>
-                            </p>
+    <section class="issue-detail-main">
+        <div class="front-container">
 
-                            <a asp-action="Details"
-                               asp-route-id="@issue.Id"
-                               class="btn btn-outline-primary">
-                                Sayıyı Gör
-                            </a>
-                        </div>
-                    </div>
+            <div class="issue-detail-card">
+                <div class="section-heading">
+                    <span>Arşiv</span>
+                    <h2>Yayınlanan Sayılar</h2>
                 </div>
-            }
+
+                @if (Model != null && Model.Any())
+                {
+                    <div class="published-issue-list">
+                        @foreach (var issue in Model)
+                        {
+                            <article class="published-issue-card">
+                                <div class="published-issue-main">
+                                    @if (!string.IsNullOrWhiteSpace(issue.CoverImagePath))
+                                    {
+                                        <div class="published-issue-cover">
+                                            <img src="@issue.CoverImagePath" alt="Dergi kapağı" />
+                                        </div>
+                                    }
+
+                                    <div>
+                                        <h3>
+                                            Cilt @issue.Volume Sayı @issue.Number (@issue.Year)
+                                        </h3>
+
+                                        @if (!string.IsNullOrWhiteSpace(issue.Title))
+                                        {
+                                            <p>@issue.Title</p>
+                                        }
+
+                                        <div class="published-issue-meta">
+                                            <span>@(issue.Articles?.Count ?? 0) makale</span>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="published-issue-actions">
+                                    <a asp-controller="Issues"
+                                       asp-action="Details"
+                                       asp-route-id="@issue.Id"
+                                       class="pdf-btn">
+                                        Sayıyı Gör
+                                    </a>
+                                </div>
+                            </article>
+                        }
+                    </div>
+                }
+                else
+                {
+                    <div class="empty-state">
+                        Henüz yayımlanmış sayı bulunmamaktadır.
+                    </div>
+                }
+            </div>
+
         </div>
-    }
-    else
-    {
-        <div class="alert alert-info">
-            Henüz yayınlanmış sayı bulunmamaktadır.
-        </div>
-    }
+    </section>
+
 </div>

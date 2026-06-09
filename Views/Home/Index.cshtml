@@ -126,56 +126,7 @@
         </div>
     </nav>
 
-    <!-- HERO -->
-    <section class="hero-section">
-        <div class="front-container hero-grid">
-            <div class="hero-content">
-                <span class="hero-badge">@heroLabel</span>
-
-                <h2>@heroTitle</h2>
-
-                <p>@heroDescription</p>
-
-                <div class="hero-actions">
-                    <a asp-controller="Issues" asp-action="Published" class="hero-btn hero-btn-primary">Yayınlanan Sayıları İncele</a>
-                    <a href="#latest-articles" class="hero-btn hero-btn-secondary">Son Makaleler</a>
-                </div>
-            </div>
-
-            <div class="hero-card">
-                @if (Model.CurrentIssue != null)
-                {
-                    <h3>Güncel Sayı</h3>
-                    <p class="hero-card-title">@Model.CurrentIssue.Title</p>
-
-                    <p>
-                        <strong>Cilt:</strong> @Model.CurrentIssue.Volume
-                        <br />
-                        <strong>Sayı:</strong> @Model.CurrentIssue.Number
-                        <br />
-                        <strong>Yıl:</strong> @Model.CurrentIssue.Year
-                    </p>
-
-                    @if (Model.CurrentIssue.PublishedDate.HasValue)
-                    {
-                        <p>
-                            <strong>Yayın Tarihi:</strong>
-                            @Model.CurrentIssue.PublishedDate.Value.ToString("dd.MM.yyyy")
-                        </p>
-                    }
-
-                    <a asp-controller="Issues" asp-action="Published">Güncel sayıya git →</a>
-                }
-                else
-                {
-                    <h3>Güncel Sayı</h3>
-                    <p class="hero-card-title">Henüz sayı yayımlanmadı</p>
-                    <p>Derginin yayımlanan sayıları buradan görüntülenebilir.</p>
-                    <a asp-controller="Issues" asp-action="Published">Sayıları görüntüle →</a>
-                }
-            </div>
-        </div>
-    </section>
+   
 
     <!-- MAIN CONTENT -->
     <section class="front-main">
@@ -196,13 +147,57 @@
 
                 <!-- LATEST ARTICLES -->
                 <section id="latest-articles" class="content-card">
-                    <div class="section-heading section-heading-row">
-                        <div>
-                            <span>Yayınlar</span>
-                            <h2>Son Yayınlanan Makaleler</h2>
+                    <div class="home-current-issue-header">
+
+                        @if (Model.CurrentIssue != null && !string.IsNullOrWhiteSpace(Model.CurrentIssue.CoverImagePath))
+                        {
+                            <div class="home-current-issue-cover">
+                                <img src="@Model.CurrentIssue.CoverImagePath" alt="Dergi Kapağı" />
+                            </div>
+                        }
+
+                        <div class="home-current-issue-info">
+                            <span class="home-current-label">Son Sayı</span>
+
+                            @if (Model.CurrentIssue != null)
+                            {
+                                <h2>
+                                    Cilt @Model.CurrentIssue.Volume Sayı @Model.CurrentIssue.Number (@Model.CurrentIssue.Year)
+                                </h2>
+                            }
+                            else
+                            {
+                                <h2>Son Sayı</h2>
+                            }
+
+                            <div class="home-current-actions">
+                                @if (Model.CurrentIssue != null && !string.IsNullOrWhiteSpace(Model.CurrentIssue.FullIssuePdfPath))
+                                {
+                                    <a href="@Model.CurrentIssue.FullIssuePdfPath"
+                                       target="_blank"
+                                       class="home-full-issue-btn">
+                                        Tam Sayı PDF
+                                    </a>
+                                }
+
+                                @if (Model.CurrentIssue != null)
+                                {
+                                    <a asp-controller="Issues"
+                                       asp-action="Details"
+                                       asp-route-id="@Model.CurrentIssue.Id"
+                                       class="home-current-detail-link">
+                                        Sayıyı Gör →
+                                    </a>
+                                }
+                            </div>
                         </div>
 
-                        <a asp-controller="Issues" asp-action="Published" class="small-link">Tümünü Gör</a>
+                        <div class="home-current-all-link">
+                            <a asp-controller="Issues" asp-action="Published" class="small-link">
+                                Tümünü Gör
+                            </a>
+                        </div>
+
                     </div>
 
                     <div class="article-list">
@@ -210,28 +205,43 @@
                         {
                             foreach (var article in Model.LatestArticles)
                             {
-                                <article class="article-item">
-                                    <div class="article-meta">
-                                        <span>Makale</span>
+                                <article class="article-item home-issue-article">
+                                    <div class="home-issue-article-main">
+                                        <div class="article-meta">
+                                            <span>Makale</span>
+                                        </div>
+
+                                        <h3>@article.Title</h3>
+
+                                        @if (!string.IsNullOrWhiteSpace(article.Authors))
+                                        {
+                                            <div class="article-author">
+                                                @article.Authors
+                                            </div>
+                                        }
+
+                                        @if (!string.IsNullOrWhiteSpace(article.Abstract))
+                                        {
+                                            <p>
+                                                @(article.Abstract.Length > 220
+                                                    ? article.Abstract.Substring(0, 220) + "..."
+                                                    : article.Abstract)
+                                            </p>
+                                        }
                                     </div>
 
-                                    <h3>@article.Title</h3>
-
-                                    @if (!string.IsNullOrWhiteSpace(article.Authors))
-                                    {
-                                        <div class="article-author">
-                                            @article.Authors
-                                        </div>
-                                    }
-
-                                    @if (!string.IsNullOrWhiteSpace(article.Abstract))
-                                    {
-                                        <p>
-                                            @(article.Abstract.Length > 260
-                                                ? article.Abstract.Substring(0, 260) + "..."
-                                                : article.Abstract)
-                                        </p>
-                                    }
+                                    <div class="home-issue-article-actions">
+                                        @if (!string.IsNullOrWhiteSpace(article.PdfFilePath))
+                                        {
+                                            <a href="@article.PdfFilePath" target="_blank" class="home-pdf-btn">
+                                                PDF
+                                            </a>
+                                        }
+                                        else
+                                        {
+                                            <span class="home-pdf-missing">PDF yok</span>
+                                        }
+                                    </div>
                                 </article>
                             }
                         }
