@@ -41,11 +41,6 @@ jobs:
         run: |
           echo "Publish klasörü:"
           ls -la ./publish
-  
-      - name: Publish çıktısını kontrol et
-        run: |
-          echo "Publish klasörü:"
-          ls -la ./publish
 
       - name: Publish paketini hazırla
         run: |
@@ -73,52 +68,61 @@ jobs:
           script: |
             set -e
 
-            APP_DIR="/var/www/mydergiapp"
+            # Canli uygulama dergiasp.service ile bu klasorden calisiyor (root, 127.0.0.1:5002)
+            APP_DIR="/var/www/dergiasp/publish"
+            SERVICE="dergiasp.service"
             TMP_DIR="/tmp/mydergiapp_deploy"
             BACKUP_DIR="/tmp/mydergiapp_backup"
 
             mkdir -p "$APP_DIR"
             mkdir -p "$APP_DIR/wwwroot/uploads"
+            mkdir -p "$APP_DIR/wwwroot/upload"
             rm -rf "$BACKUP_DIR"
             mkdir -p "$BACKUP_DIR"
 
-            if [ -f "$APP_DIR/appsettings.json" ]; then
-              cp "$APP_DIR/appsettings.json" "$BACKUP_DIR/appsettings.json"
-            fi
+            for f in appsettings.json appsettings.Production.json appsettings.Development.json; do
+              if [ -f "$APP_DIR/$f" ]; then
+                cp "$APP_DIR/$f" "$BACKUP_DIR/$f"
+              fi
+            done
 
-            if [ -f "$APP_DIR/appsettings.Production.json" ]; then
-              cp "$APP_DIR/appsettings.Production.json" "$BACKUP_DIR/appsettings.Production.json"
-            fi
-
+            # wwwroot/uploads: kapak, banner vb.  wwwroot/upload: makale dosyalari (main, revisions, ...)
             if [ -d "$APP_DIR/wwwroot/uploads" ]; then
               cp -r "$APP_DIR/wwwroot/uploads" "$BACKUP_DIR/uploads"
+            fi
+
+            if [ -d "$APP_DIR/wwwroot/upload" ]; then
+              cp -r "$APP_DIR/wwwroot/upload" "$BACKUP_DIR/upload"
             fi
 
             rm -rf "$APP_DIR"/*
 
             tar -xzf "$TMP_DIR/mydergiapp.tar.gz" -C "$APP_DIR"
 
-            if [ -f "$BACKUP_DIR/appsettings.json" ]; then
-              cp "$BACKUP_DIR/appsettings.json" "$APP_DIR/appsettings.json"
-            fi
-
-            if [ -f "$BACKUP_DIR/appsettings.Production.json" ]; then
-              cp "$BACKUP_DIR/appsettings.Production.json" "$APP_DIR/appsettings.Production.json"
-            fi
+            for f in appsettings.json appsettings.Production.json appsettings.Development.json; do
+              if [ -f "$BACKUP_DIR/$f" ]; then
+                cp "$BACKUP_DIR/$f" "$APP_DIR/$f"
+              fi
+            done
 
             mkdir -p "$APP_DIR/wwwroot/uploads"
+            mkdir -p "$APP_DIR/wwwroot/upload"
 
             if [ -d "$BACKUP_DIR/uploads" ]; then
               cp -r "$BACKUP_DIR/uploads/." "$APP_DIR/wwwroot/uploads/" || true
             fi
 
-            chown -R deploy:deploy "$APP_DIR"
+            if [ -d "$BACKUP_DIR/upload" ]; then
+              cp -r "$BACKUP_DIR/upload/." "$APP_DIR/wwwroot/upload/" || true
+            fi
+
+            # Servis root olarak calisiyor; ayri bir deploy kullanicisi yok, chown gerekmez
             chmod -R 755 "$APP_DIR"
-            chmod -R 775 "$APP_DIR/wwwroot/uploads"
+            chmod -R 775 "$APP_DIR/wwwroot/uploads" "$APP_DIR/wwwroot/upload"
 
             systemctl daemon-reload
-            systemctl restart MyDergiApp.service
-            systemctl status MyDergiApp.service --no-pager -l
+            systemctl restart "$SERVICE"
+            systemctl status "$SERVICE" --no-pager -l
 
             rm -rf "$TMP_DIR"
             rm -rf "$BACKUP_DIR"
