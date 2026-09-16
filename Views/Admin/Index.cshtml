@@ -253,16 +253,16 @@
 
                         <div class="col-md-6">
                             <a asp-controller="Admin"
-                               asp-action="Index"
+                               asp-action="Smtp"
                                class="text-decoration-none">
                                 <div class="quick-admin-card">
                                     <div>
-                                        <h6 class="fw-bold mb-1">Sistem Paneli</h6>
+                                        <h6 class="fw-bold mb-1">SMTP / E-posta Ayarları</h6>
                                         <p class="text-muted mb-0 small">
-                                            Yönetim paneli genel görünümüne dönün.
+                                            Gönderen hesabı ve sunucu ayarlarını düzenleyin, deneme e-postası gönderin.
                                         </p>
                                     </div>
-                                    <i class="bi bi-speedometer2 fs-3"></i>
+                                    <i class="bi bi-envelope-at fs-3"></i>
                                 </div>
                             </a>
                         </div>
@@ -364,11 +364,13 @@
                             {
                                 <i class="bi bi-check-circle text-success"></i>
                                 <span>SMTP ayarları tanımlı</span>
+                                <a asp-controller="Admin" asp-action="Smtp" class="small ms-1">(dene / düzenle)</a>
                             }
                             else
                             {
                                 <i class="bi bi-x-circle text-danger"></i>
                                 <span>SMTP ayarları eksik</span>
+                                <a asp-controller="Admin" asp-action="Smtp" class="small ms-1">(ayarla)</a>
                             }
                         </li>
 

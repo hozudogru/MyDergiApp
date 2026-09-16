@@ -25,6 +25,7 @@ public class AppDbContext : IdentityDbContext<AppUser>
     public DbSet<SubmissionAuthor> SubmissionAuthors { get; set; }
     public DbSet<PublishedArticle> PublishedArticles { get; set; }
     public DbSet<IssueArticle> IssueArticles { get; set; }
+    public DbSet<SmtpSetting> SmtpSettings { get; set; }
 
 
     protected override void OnModelCreating(ModelBuilder builder)

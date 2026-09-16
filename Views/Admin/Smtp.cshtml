@@ -1,0 +1,233 @@
+@model MyDergiApp.ViewModels.SmtpSettingsViewModel
+
+@{
+    ViewData["Title"] = "SMTP / E-posta Ayarları";
+
+    var effectiveBadge = Model.EffectiveSource == MyDergiApp.Services.SmtpSettingsService.SourceDatabase
+        ? "bg-success"
+        : "bg-secondary";
+}
+
+<div class="container-fluid">
+
+    <div class="d-flex flex-wrap justify-content-between align-items-start gap-3 mb-4">
+        <div>
+            <h1 class="fw-bold mb-2">SMTP / E-posta Ayarları</h1>
+            <p class="text-muted mb-0">
+                Sistemin gönderdiği tüm e-postalar (şifre sıfırlama, editör kararları, hakem davetleri) bu hesaptan çıkar.
+            </p>
+        </div>
+        <a asp-controller="Admin" asp-action="Index" class="btn btn-outline-secondary rounded-pill">
+            <i class="bi bi-arrow-left me-1"></i> Admin Paneli
+        </a>
+    </div>
+
+    @* Basari / hata mesajlari _Layout tarafindan TempData uzerinden gosterilir *@
+
+    @if (Model.PasswordDecryptFailed)
+    {
+        <div class="alert alert-warning rounded-4 border-0">
+            <i class="bi bi-exclamation-triangle me-1"></i>
+            Kayıtlı parola çözülemedi (uygulamanın şifreleme anahtarı değişmiş olabilir). Parolayı yeniden girip kaydedin.
+        </div>
+    }
+
+    <div class="row g-4">
+
+        <div class="col-lg-8">
+            <div class="card border-0 shadow-sm rounded-4">
+                <div class="card-header bg-white border-0 py-3">
+                    <h5 class="fw-bold mb-0">Sunucu ve Hesap</h5>
+                </div>
+
+                <div class="card-body">
+                    <form asp-action="Smtp" method="post" id="smtpForm">
+                        @Html.AntiForgeryToken()
+                        <div asp-validation-summary="ModelOnly" class="text-danger mb-3"></div>
+
+                        <div class="row g-3">
+                            <div class="col-md-8">
+                                <label asp-for="Host" class="form-label fw-semibold"></label>
+                                <input asp-for="Host" class="form-control" placeholder="örn. smtp.example.com" autocomplete="off" />
+                                <span asp-validation-for="Host" class="text-danger small"></span>
+                            </div>
+
+                            <div class="col-md-4">
+                                <label asp-for="Port" class="form-label fw-semibold"></label>
+                                <input asp-for="Port" class="form-control" type="number" min="1" max="65535" />
+                                <span asp-validation-for="Port" class="text-danger small"></span>
+                            </div>
+
+                            <div class="col-md-6">
+                                <label asp-for="UserName" class="form-label fw-semibold"></label>
+                                <input asp-for="UserName" class="form-control" placeholder="genellikle e-posta adresi" autocomplete="off" />
+                                <span asp-validation-for="UserName" class="text-danger small"></span>
+                            </div>
+
+                            <div class="col-md-6">
+                                <label asp-for="Password" class="form-label fw-semibold"></label>
+                                <input asp-for="Password" class="form-control" autocomplete="new-password"
+                                       placeholder="@(Model.HasStoredPassword ? "Değiştirmek için yeni parolayı yazın" : "Parola")" />
+                                <div class="form-text">
+                                    @if (Model.HasStoredPassword)
+                                    {
+                                        <span><i class="bi bi-shield-lock me-1"></i>Kayıtlı parola var. Boş bırakırsanız korunur.</span>
+                                    }
+                                    else
+                                    {
+                                        <span>Parola veritabanında şifrelenmiş olarak saklanır.</span>
+                                    }
+                                </div>
+                            </div>
+
+                            <div class="col-md-6">
+                                <label asp-for="FromEmail" class="form-label fw-semibold"></label>
+                                <input asp-for="FromEmail" class="form-control" placeholder="editor@alanadi.com" />
+                                <span asp-validation-for="FromEmail" class="text-danger small"></span>
+                            </div>
+
+                            <div class="col-md-6">
+                                <label asp-for="FromName" class="form-label fw-semibold"></label>
+                                <input asp-for="FromName" class="form-control" placeholder="örn. DergiASP Editörlük" />
+                                <span asp-validation-for="FromName" class="text-danger small"></span>
+                            </div>
+
+                            <div class="col-md-6">
+                                <div class="form-check form-switch mt-2">
+                                    <input asp-for="EnableSsl" class="form-check-input" />
+                                    <label asp-for="EnableSsl" class="form-check-label fw-semibold"></label>
+                                </div>
+                                <div class="form-text">Port 587 için açık olmalı. 465 (SSL on connect) desteklenmez.</div>
+                            </div>
+
+                            <div class="col-md-6">
+                                <div class="form-check form-switch mt-2">
+                                    <input asp-for="IsActive" class="form-check-input" />
+                                    <label asp-for="IsActive" class="form-check-label fw-semibold"></label>
+                                </div>
+                                <div class="form-text">Kapatılırsa sunucudaki appsettings ayarlarına dönülür.</div>
+                            </div>
+                        </div>
+
+                        <hr class="my-4" />
+
+                        <h6 class="fw-bold mb-2">Deneme e-postası</h6>
+                        <p class="text-muted small mb-3">
+                            Formdaki değerlerle (kaydetmeden) bir deneme e-postası gönderir. Parola alanı boşsa kayıtlı parola kullanılır.
+                        </p>
+
+                        <div class="row g-3 align-items-end">
+                            <div class="col-md-8">
+                                <label asp-for="TestRecipient" class="form-label fw-semibold"></label>
+                                <input asp-for="TestRecipient" class="form-control" placeholder="kendi adresiniz" value="@(Model.TestRecipient ?? User.Identity?.Name)" />
+                                <span asp-validation-for="TestRecipient" class="text-danger small"></span>
+                            </div>
+                            <div class="col-md-4">
+                                <button type="submit" class="btn btn-outline-primary w-100 rounded-pill"
+                                        formaction="@Url.Action("SmtpTest", "Admin")" formnovalidate id="btnTest">
+                                    <i class="bi bi-send me-1"></i> Deneme Gönder
+                                </button>
+                            </div>
+                        </div>
+
+                        <div class="d-flex justify-content-end gap-2 mt-4">
+                            <button type="submit" class="btn btn-primary rounded-pill px-4">
+                                <i class="bi bi-save me-1"></i> Kaydet
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-4">
+            <div class="card border-0 shadow-sm rounded-4 mb-4">
+                <div class="card-header bg-white border-0 py-3">
+                    <h5 class="fw-bold mb-0">Durum</h5>
+                </div>
+                <div class="card-body">
+                    <div class="mb-3">
+                        <div class="text-muted small">Şu an kullanılan kaynak</div>
+                        <span class="badge @effectiveBadge rounded-pill">@Model.EffectiveSource</span>
+                        <div class="small mt-1">@Model.EffectiveSummary</div>
+                    </div>
+
+                    <div class="mb-3">
+                        <div class="text-muted small">Son kayıt</div>
+                        @if (Model.UpdatedAt.HasValue)
+                        {
+                            <div class="small">
+                                @Model.UpdatedAt.Value.ToLocalTime().ToString("dd.MM.yyyy HH:mm")
+                                @if (!string.IsNullOrWhiteSpace(Model.UpdatedBy))
+                                {
+                                    <span class="text-muted">— @Model.UpdatedBy</span>
+                                }
+                            </div>
+                        }
+                        else
+                        {
+                            <div class="small text-muted">Veritabanına henüz kayıt yapılmadı; appsettings değerleri gösteriliyor.</div>
+                        }
+                    </div>
+
+                    <div>
+                        <div class="text-muted small">Son deneme</div>
+                        @if (Model.LastTestAt.HasValue)
+                        {
+                            <div class="small">
+                                @if (Model.LastTestSucceeded == true)
+                                {
+                                    <i class="bi bi-check-circle text-success me-1"></i>
+                                }
+                                else
+                                {
+                                    <i class="bi bi-x-circle text-danger me-1"></i>
+                                }
+                                @Model.LastTestAt.Value.ToLocalTime().ToString("dd.MM.yyyy HH:mm")
+                            </div>
+                            @if (!string.IsNullOrWhiteSpace(Model.LastTestMessage))
+                            {
+                                <div class="small text-muted mt-1">@Model.LastTestMessage</div>
+                            }
+                        }
+                        else
+                        {
+                            <div class="small text-muted">Henüz deneme yapılmadı.</div>
+                        }
+                    </div>
+                </div>
+            </div>
+
+            <div class="card border-0 shadow-sm rounded-4">
+                <div class="card-header bg-white border-0 py-3">
+                    <h6 class="fw-bold mb-0">İpuçları</h6>
+                </div>
+                <div class="card-body small text-muted">
+                    <ul class="mb-0 ps-3">
+                        <li class="mb-2">Gönderen adresi, kullanıcı adındaki hesapla aynı alan adında olmalı; çoğu sunucu farklı gönderen adresini reddeder.</li>
+                        <li class="mb-2">"Kimlik doğrulama başarısız" hatası genelde parola veya kullanıcı adı yanlış demektir.</li>
+                        <li class="mb-2">"Bağlanılamadı" hatasında sunucu adı, port ve sunucunun giden 587 portunu açık tuttuğunu kontrol edin.</li>
+                        <li>Deneme e-postası gelmezse spam klasörüne bakın.</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+    </div>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+    <script>
+        // Gonderim sirasinda butonlari kilitle (submit tamamlandiktan sonra, submitter kaybolmasin diye setTimeout ile)
+        document.getElementById('smtpForm')?.addEventListener('submit', function (e) {
+            var submitter = e.submitter;
+            setTimeout(function () {
+                document.querySelectorAll('#smtpForm button[type=submit]').forEach(function (b) { b.disabled = true; });
+                if (submitter) {
+                    submitter.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> Gönderiliyor...';
+                }
+            }, 0);
+        });
+    </script>
+}

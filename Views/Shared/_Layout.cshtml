@@ -156,6 +156,13 @@
                            class="nav-link text-white rounded mb-1 @ActiveClass("Issues", "Index")">
                             Sayılar
                         </a>
+
+                        <div class="text-uppercase small text-white-50 mt-3 mb-2">Sistem</div>
+
+                        <a asp-controller="Admin" asp-action="Smtp"
+                           class="nav-link text-white rounded mb-1 @ActiveClass("Admin", "Smtp")">
+                            SMTP / E-posta Ayarları
+                        </a>
                     }
 
                     else if (currentSection == "ChiefEditor" && isChiefEditor)

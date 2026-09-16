@@ -13,6 +13,7 @@ builder.Services.Configure<SmtpSettings>(
     builder.Configuration.GetSection("SMTP"));
 
 // Custom services
+builder.Services.AddScoped<SmtpSettingsService>(); // DB'deki SMTP ayarlari, yoksa appsettings
 builder.Services.AddScoped<EmailService>();
 builder.Services.AddScoped<EmailTemplateService>();
 
