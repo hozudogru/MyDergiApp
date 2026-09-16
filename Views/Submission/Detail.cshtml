@@ -18,7 +18,9 @@
     var isReviewer = !renderAsAuthor && User.IsInRole("Reviewer");
 
     var hideReviewerIdentity = renderAsAuthor || !isEditor;
-    var canManageReviewers = isEditor;
+    // Hakem atama / karar / atama iptali action'lari yalnizca atanmis alan editorune acik (Editor rolu + atama kontrolu);
+    // ChiefEditor ve Admin'e gosterilen butonlar 403 veriyordu.
+    var canManageReviewers = !renderAsAuthor && ViewBag.IsAssignedEditor == true;
 
     
     
@@ -282,15 +284,7 @@
         <a asp-action="EditorDecision" asp-route-id="@Model.Id" class="btn btn-success">
             Editör Kararı
         </a>
-
-        <form asp-action="Delete" method="post" class="d-inline"
-              onsubmit="return confirm('Bu makale silinsin mi? Bu işlem geri alınamaz.');">
-            @Html.AntiForgeryToken()
-            <input type="hidden" name="id" value="@Model.Id" />
-            <button type="submit" class="btn btn-danger">
-                Makale Sil
-            </button>
-        </form>
+        @* "Makale Sil" formu kaldirildi: Submission/Delete action'i yok (404 veriyordu); makale silme is akisinda tanimli degil *@
     }
 </div>
 
@@ -696,10 +690,12 @@
                                         }
                                         else
                                         {
-                                            <form asp-action="RemoveReviewer" method="post" class="d-inline"
-                                                  onsubmit="return confirm('Bu hakem ataması kaldırılsın mı?');">
+                                            @* RemoveReviewer action'i yok; mevcut iptal akisi (CancelReviewerAssignment) kullanilir *@
+                                            <form asp-action="CancelReviewerAssignment" method="post" class="d-inline"
+                                                  onsubmit="return confirm('Bu hakem ataması iptal edilsin mi?');">
                                                 @Html.AntiForgeryToken()
-                                                <input type="hidden" name="assignmentId" value="@(reviewer?.AssignmentId ?? 0)" />                                                <input type="hidden" name="submissionId" value="@Model.Id" />
+                                                <input type="hidden" name="assignmentId" value="@(reviewer?.AssignmentId ?? 0)" />
+                                                <input type="hidden" name="reason" value="Makale detay sayfasından editör tarafından iptal edildi." />
                                                 <button type="submit" class="btn btn-sm btn-outline-danger">
                                                     Sil
                                                 </button>

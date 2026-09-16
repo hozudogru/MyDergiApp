@@ -104,6 +104,15 @@
                                             Revizyon Yükle
                                         </a>
                                     }
+                                    else if (item.Status == SubmissionStatus.YazaraIadeEdildi)
+                                    {
+                                        <a asp-controller="Submission"
+                                           asp-action="UploadRevision"
+                                           asp-route-id="@item.Id"
+                                           class="btn btn-sm btn-warning">
+                                            Düzeltilmiş Dosyayı Yükle
+                                        </a>
+                                    }
                                 </td>
                             </tr>
                         }

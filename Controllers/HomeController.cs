@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using MyDergiApp.Data;
 using MyDergiApp.Entities;
+using MyDergiApp.Helpers;
 using MyDergiApp.Models;
 using MyDergiApp.ViewModels;
 
@@ -75,15 +76,15 @@ namespace MyDergiApp.Controllers
                 .ThenBy(x => x.Name)
                 .ToListAsync();
 
-            var currentIssue = await _context.Issues
+            // Cilt/Sayi metin oldugu icin siralama bellek tarafinda dogal (sayisal) yapilir; bkz. IssueOrdering
+            var publishedIssues = await _context.Issues
                 .AsNoTracking()
                 .Include(x => x.Articles)
                     .ThenInclude(a => a.Submission)
                 .Where(x => x.IsPublished)
-                .OrderByDescending(x => x.Year)
-                .ThenByDescending(x => x.Volume)
-                .ThenByDescending(x => x.Number)
-                .FirstOrDefaultAsync();
+                .ToListAsync();
+
+            var currentIssue = publishedIssues.NewestFirst().FirstOrDefault();
             var latestArticles = currentIssue == null
             ? new List<LatestArticleViewModel>()
             : await _context.PublishedArticles

@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using MyDergiApp.Data;
+using MyDergiApp.Helpers;
 using MyDergiApp.Models;
 
 namespace MyDergiApp.Controllers
@@ -190,12 +191,10 @@ namespace MyDergiApp.Controllers
                 .Include(i => i.Articles)
                     .ThenInclude(a => a.Submission)
                 .Where(i => i.IsPublished)
-                .OrderByDescending(i => i.Year)
-                .ThenByDescending(i => i.Volume)
-                .ThenByDescending(i => i.Number)
                 .ToListAsync();
 
-            return View(issues);
+            // Cilt/Sayi metin; dogal (sayisal) siralama bellek tarafinda (IssueOrdering)
+            return View(issues.NewestFirst().ToList());
         }
         [HttpGet]
         public async Task<IActionResult> Details(int id)
@@ -242,10 +241,33 @@ namespace MyDergiApp.Controllers
             if (issue == null)
                 return NotFound();
 
-            issue.Volume = model.Volume;
-            issue.Number = model.Number;
+            // Dogrulama: Volume/Number DB'de NOT NULL, bos gonderilirse 500 veriyordu
+            if (string.IsNullOrWhiteSpace(model.Volume) || string.IsNullOrWhiteSpace(model.Number))
+            {
+                TempData["Error"] = "Cilt ve Sayı alanları boş bırakılamaz.";
+                return RedirectToAction("ManageArticles", new { id });
+            }
+
+            if (model.Volume.Length > 50 || model.Number.Length > 50 || (model.Title?.Length ?? 0) > 250)
+            {
+                TempData["Error"] = "Cilt ve Sayı en fazla 50, Başlık en fazla 250 karakter olabilir.";
+                return RedirectToAction("ManageArticles", new { id });
+            }
+
+            if (model.Year < 1900 || model.Year > DateTime.UtcNow.Year + 5)
+            {
+                TempData["Error"] = "Yıl geçerli bir değer olmalıdır.";
+                return RedirectToAction("ManageArticles", new { id });
+            }
+
+            issue.Volume = model.Volume.Trim();
+            issue.Number = model.Number.Trim();
             issue.Year = model.Year;
-            issue.Title = model.Title;
+            issue.Title = string.IsNullOrWhiteSpace(model.Title) ? null : model.Title.Trim();
+
+            if (model.IsPublished && !issue.IsPublished)
+                issue.PublishedAt = DateTime.UtcNow;
+
             issue.IsPublished = model.IsPublished;
             issue.UpdatedAt = DateTime.UtcNow;
 
@@ -459,12 +481,9 @@ namespace MyDergiApp.Controllers
         {
             var issues = await _context.Issues
                 .Include(i => i.Articles)
-                .OrderByDescending(i => i.Year)
-                .ThenByDescending(i => i.Volume)
-                .ThenByDescending(i => i.Number)
                 .ToListAsync();
 
-            return View(issues);
+            return View(issues.NewestFirst().ToList());
         }
         [Authorize(Roles = "Admin")]
         [HttpGet]
@@ -490,6 +509,22 @@ namespace MyDergiApp.Controllers
 
             if (article == null)
                 return NotFound();
+
+            // Uzunluk sinirlari (StringLength) DB'de character varying(n); asilirsa Npgsql 500 veriyordu
+            ModelState.Remove(nameof(PublishedArticle.Issue));
+            ModelState.Remove(nameof(PublishedArticle.Submission));
+
+            if (!ModelState.IsValid)
+            {
+                var errors = ModelState.Values
+                    .SelectMany(v => v.Errors)
+                    .Select(e => e.ErrorMessage)
+                    .Where(m => !string.IsNullOrWhiteSpace(m))
+                    .Distinct();
+
+                TempData["Error"] = "Makale üst verisi kaydedilmedi: " + string.Join(" ", errors);
+                return RedirectToAction(nameof(EditPublishedArticle), new { id });
+            }
 
             article.TitleOverride = string.IsNullOrWhiteSpace(model.TitleOverride)
                 ? null

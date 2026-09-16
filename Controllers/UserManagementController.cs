@@ -388,6 +388,10 @@ public class UserManagementController : Controller
             return RedirectToAction(nameof(EditRoles), new { id = model.UserId });
         }
 
+        // Security stamp degisince kullanicinin mevcut cookie'si bir sonraki dogrulamada (<=1 dk) yeniden kurulur;
+        // alinan Admin rolu 30 dk daha kullanilamaz.
+        await _userManager.UpdateSecurityStampAsync(user);
+
         TempData["Success"] = "Kullanıcı rolleri güncellendi.";
         return RedirectToAction(nameof(Index));
     }

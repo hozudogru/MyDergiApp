@@ -41,6 +41,13 @@ builder.Services
     .AddDefaultTokenProviders()
     .AddDefaultUI();
 
+// Rol/aktiflik degisiklikleri cookie'ye en gec 1 dk icinde yansisin (varsayilan 30 dk):
+// SecurityStampValidator bu aralikla DB'deki security stamp'i kontrol edip principal'i yeniden kurar.
+builder.Services.Configure<SecurityStampValidatorOptions>(options =>
+{
+    options.ValidationInterval = TimeSpan.FromMinutes(1);
+});
+
 // Cookie paths
 builder.Services.ConfigureApplicationCookie(options =>
 {
@@ -246,7 +253,18 @@ app.Use(async (context, next) =>
 
             if (!roles.Any())
             {
-                await userManager.AddToRoleAsync(user, "Author");
+                var addResult = await userManager.AddToRoleAsync(user, "Author");
+
+                // Rol claim'i cookie'de tasinir; yenilenmezse ayni istekte ve 30 dk boyunca kullanici rolsuz gorunur
+                // (menude "Makalelerim" cikmaz, sayfa 403 verir). Oturumu hemen yenile.
+                if (addResult.Succeeded && !context.Response.HasStarted)
+                {
+                    var signInManager = scope.ServiceProvider.GetRequiredService<SignInManager<AppUser>>();
+                    await signInManager.RefreshSignInAsync(user);
+
+                    // Bu istegin yetkilendirmesi de yeni rolu gorsun
+                    context.User = await signInManager.CreateUserPrincipalAsync(user);
+                }
             }
         }
     }

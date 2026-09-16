@@ -51,7 +51,8 @@ namespace MyDergiApp.Controllers
             return User.IsInRole("Admin") || User.IsInRole("Editor") || User.IsInRole("ChiefEditor");
         }
 
-        private async Task SaveSubmissionFileAsync(
+        /// <returns>Dosya kaydedildiyse true; dosya yoksa ya da uzanti/boyut nedeniyle reddedildiyse false (TempData["Error"] doldurulur).</returns>
+        private async Task<bool> SaveSubmissionFileAsync(
             int submissionId,
             IFormFile? file,
             string fileType,
@@ -60,7 +61,7 @@ namespace MyDergiApp.Controllers
             int reviewRound = 1)
         {
             if (file == null || file.Length == 0)
-                return;
+                return false;
 
             // Uzanti beyaz listesi + boyut siniri: yuklemeler disk'e yaziliyor ve yetkili kullanicilara servis ediliyor;
             // .html/.svg/.exe gibi dosyalar barindirilmasin.
@@ -70,13 +71,13 @@ namespace MyDergiApp.Controllers
             {
                 TempData["Error"] = $"'{file.FileName}' yüklenmedi: yalnızca PDF, Word (doc/docx), Excel (xls/xlsx), PowerPoint (ppt/pptx), " +
                                     "OpenDocument (odt), RTF, TXT, ZIP ve JPG/PNG dosyaları kabul edilir.";
-                return;
+                return false;
             }
 
             if (file.Length > MaxSubmissionFileSizeBytes)
             {
                 TempData["Error"] = $"'{file.FileName}' yüklenmedi: dosya boyutu en fazla {MaxSubmissionFileSizeBytes / (1024 * 1024)} MB olabilir.";
-                return;
+                return false;
             }
 
             Directory.CreateDirectory(folderPath);
@@ -106,6 +107,8 @@ namespace MyDergiApp.Controllers
                 UploadedAt = DateTime.UtcNow,
                 ReviewRound = reviewRound
             });
+
+            return true;
         }
 
         private async Task NotifyChiefEditorsForNewSubmissionAsync(
@@ -1026,9 +1029,28 @@ namespace MyDergiApp.Controllers
                 ? "Editör tarafından iptal edildi."
                 : reason.Trim();
 
+            // Turda aktif hakem kalmadiysa makale "hakem atamasi bekliyor" durumuna doner
+            var submissionForStatus = assignment.Submission;
+
+            var remainingActive = await _context.SubmissionReviewers
+                .AnyAsync(sr =>
+                    sr.SubmissionId == assignment.SubmissionId &&
+                    sr.Id != assignment.Id &&
+                    sr.ReviewRound == submissionForStatus.CurrentReviewRound &&
+                    sr.Status != ReviewerAssignmentStatus.Cancelled &&
+                    sr.Status != ReviewerAssignmentStatus.Declined);
+
+            if (!remainingActive && submissionForStatus.Status == SubmissionStatus.HakemDegerlendirmesinde)
+            {
+                submissionForStatus.Status = SubmissionStatus.HakemAtamasiBekliyor;
+                submissionForStatus.UpdatedAt = DateTime.UtcNow;
+            }
+
             await _context.SaveChangesAsync();
 
-            TempData["Success"] = "Hakem ataması iptal edildi. Yeni hakem atayabilirsiniz.";
+            TempData["Success"] = remainingActive
+                ? "Hakem ataması iptal edildi. Yeni hakem atayabilirsiniz."
+                : "Hakem ataması iptal edildi. Bu turda aktif hakem kalmadı; makale hakem ataması bekliyor.";
 
             return RedirectToAction(nameof(EditorDecision), new { id = assignment.SubmissionId });
         }
@@ -1295,7 +1317,10 @@ namespace MyDergiApp.Controllers
             if (submission == null)
                 return Forbid();
 
-            if (submission.Status != SubmissionStatus.RevizyonIstendi)
+            // RevizyonIstendi: hakem turu sonrasi revizyon. YazaraIadeEdildi: on kontrolde iade edilen makale
+            // duzeltilip yeniden gonderilir (onceden bu durum cikmaz sokakti; yazar yeni makale acmak zorundaydi).
+            if (submission.Status != SubmissionStatus.RevizyonIstendi &&
+                submission.Status != SubmissionStatus.YazaraIadeEdildi)
             {
                 TempData["Error"] = "Bu makale için şu anda revizyon yüklenemez.";
                 return RedirectToAction(nameof(Makalelerim));
@@ -1333,7 +1358,8 @@ namespace MyDergiApp.Controllers
                 if (submission == null)
                             return NotFound();
 
-                        if (submission.Status != SubmissionStatus.RevizyonIstendi)
+                        if (submission.Status != SubmissionStatus.RevizyonIstendi &&
+                            submission.Status != SubmissionStatus.YazaraIadeEdildi)
                         {
                             TempData["Error"] = "Bu makale için şu anda revizyon yüklenemez.";
                             return RedirectToAction(nameof(Makalelerim));
@@ -1359,9 +1385,14 @@ namespace MyDergiApp.Controllers
                   "submissions"
               );
 
-            var newRound = submission.CurrentReviewRound + 1;
+            var isPreCheckReturn = submission.Status == SubmissionStatus.YazaraIadeEdildi;
 
-            await SaveSubmissionFileAsync(
+            // On kontrol iadesinde tur artmaz (hakem sureci baslamamistir); hakem revizyonunda yeni tur acilir.
+            var newRound = isPreCheckReturn
+                ? Math.Max(1, submission.CurrentReviewRound)
+                : submission.CurrentReviewRound + 1;
+
+            var saved = await SaveSubmissionFileAsync(
                 submission.Id,
                 model.RevisionFile,
                 "RevizyonDosyasi",
@@ -1369,6 +1400,15 @@ namespace MyDergiApp.Controllers
                 user.Id,
                 newRound
             );
+
+            if (!saved)
+            {
+                // SaveSubmissionFileAsync uzanti/boyut hatasini TempData["Error"]'a yazdi; durum degistirilmez
+                ModelState.AddModelError("RevisionFile", TempData["Error"]?.ToString() ?? "Dosya yüklenemedi.");
+                TempData.Remove("Error");
+                model.SubmissionTitle = submission.Title;
+                return View(model);
+            }
 
             await _context.SaveChangesAsync();
 
@@ -1380,15 +1420,54 @@ namespace MyDergiApp.Controllers
             if (latestRevisionFile != null)
             {
                 submission.FilePath = latestRevisionFile.StoredFilePath;
+
+                // Yazarin revizyon notu daha once hic kaydedilmiyordu; editor/hakemlerin gorebilmesi icin sakla
+                _context.SubmissionRevisions.Add(new SubmissionRevision
+                {
+                    SubmissionId = submission.Id,
+                    FilePath = latestRevisionFile.StoredFilePath,
+                    OriginalFileName = latestRevisionFile.OriginalFileName ?? string.Empty,
+                    Note = model.Note?.Trim() ?? string.Empty,
+                    UploadedAt = DateTime.UtcNow,
+                    ReviewRound = newRound
+                });
             }
 
-            submission.CurrentReviewRound = newRound;
-            submission.Status = SubmissionStatus.RevizyonYuklendi;
+            if (isPreCheckReturn)
+            {
+                // Duzeltilmis makale yeniden on kontrole duser
+                submission.Status = SubmissionStatus.OnKontrolBekliyor;
+            }
+            else
+            {
+                // Eski turun tamamlanmamis hakem atamalari yetim kalmasin: tur kapandigi icin iptal edilir.
+                // (Editor 1/2 raporla revizyon istemis olabilir; kalan hakem yeni turda yeniden atanabilir.)
+                var staleAssignments = await _context.SubmissionReviewers
+                    .Where(sr =>
+                        sr.SubmissionId == submission.Id &&
+                        sr.ReviewRound == submission.CurrentReviewRound &&
+                        (sr.Status == ReviewerAssignmentStatus.Assigned ||
+                         sr.Status == ReviewerAssignmentStatus.InReview))
+                    .ToListAsync();
+
+                foreach (var stale in staleAssignments)
+                {
+                    stale.Status = ReviewerAssignmentStatus.Cancelled;
+                    stale.CancelledAt = DateTime.UtcNow;
+                    stale.CancelReason = "Yazar revizyon yükledi; değerlendirme turu kapandı.";
+                }
+
+                submission.CurrentReviewRound = newRound;
+                submission.Status = SubmissionStatus.RevizyonYuklendi;
+            }
+
             submission.UpdatedAt = DateTime.UtcNow;
 
             await _context.SaveChangesAsync();
 
-            TempData["Success"] = "Revizyon dosyanız başarıyla yüklendi.";
+            TempData["Success"] = isPreCheckReturn
+                ? "Düzeltilmiş makaleniz yüklendi ve yeniden ön kontrole alındı."
+                : "Revizyon dosyanız başarıyla yüklendi.";
 
             return RedirectToAction(nameof(Makalelerim));
         }
@@ -1923,6 +2002,10 @@ namespace MyDergiApp.Controllers
 
                 ViewBag.RenderAsAuthor = false;
             }
+
+            // "Hakem Ata / Editör Kararı / atama iptali" yalnizca atanmis alan editorune gosterilir;
+            // ilgili action'lar Editor rolu + atama kontrolu yapar (ChiefEditor/Admin 403 aliyordu).
+            ViewBag.IsAssignedEditor = isAssignedEditor;
 
             var model = new SubmissionDetailViewModel
             {

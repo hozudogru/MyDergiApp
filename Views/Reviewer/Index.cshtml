@@ -10,7 +10,8 @@
         .Select(x => new
         {
             Submission = x,
-            Review = x.Reviews?.FirstOrDefault(r => r.ReviewerId == userId)
+            // Yalnizca guncel turun raporu; onceki turun tamamlanmis raporu yeni tur icin "Gonderildi" gorunmesin
+            Review = x.Reviews?.FirstOrDefault(r => r.ReviewerId == userId && r.ReviewRound == x.CurrentReviewRound)
         })
         .ToList();
 
