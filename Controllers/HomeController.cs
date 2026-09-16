@@ -19,6 +19,27 @@ namespace MyDergiApp.Controllers
             _userManager = userManager;
         }
 
+        /// <summary>
+        /// Cookie ayarlarındaki AccessDeniedPath ve pasif kullanıcı middleware'i buraya yönlendirir.
+        /// 403 döndürür ki tarayıcı/izleme araçları gerçek durumu görsün.
+        /// </summary>
+        [HttpGet]
+        public IActionResult AccessDenied()
+        {
+            Response.StatusCode = StatusCodes.Status403Forbidden;
+            return View();
+        }
+
+        /// <summary>Production'da UseExceptionHandler("/Home/Error") tarafından çağrılır.</summary>
+        [ResponseCache(Duration = 0, Location = ResponseCacheLocation.None, NoStore = true)]
+        public IActionResult Error()
+        {
+            return View(new ErrorViewModel
+            {
+                RequestId = System.Diagnostics.Activity.Current?.Id ?? HttpContext.TraceIdentifier
+            });
+        }
+
         [HttpGet]
         public async Task<IActionResult> Index()
         {

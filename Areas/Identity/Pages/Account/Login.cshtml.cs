@@ -98,8 +98,20 @@ namespace MyDergiApp.Areas.Identity.Pages.Account
                 return Page();
             }
 
+            // Form e-posta istiyor; PasswordSignInAsync(string) ise kullanici adiyla arar.
+            // Kullanici adi e-postadan farkli olan hesaplar (eski seed admin gibi) giremiyordu:
+            // once e-postayla, bulunamazsa kullanici adiyla kullaniciyi bul, sonra kullanici nesnesiyle giris yap.
+            var user = await _userManager.FindByEmailAsync(Input.Email)
+                       ?? await _userManager.FindByNameAsync(Input.Email);
+
+            if (user == null)
+            {
+                ModelState.AddModelError(string.Empty, "Geçersiz giriş denemesi.");
+                return Page();
+            }
+
             var result = await _signInManager.PasswordSignInAsync(
-                Input.Email,
+                user,
                 Input.Password,
                 Input.RememberMe,
                 lockoutOnFailure: false);
@@ -108,27 +120,22 @@ namespace MyDergiApp.Areas.Identity.Pages.Account
             {
                 _logger.LogInformation("Kullanıcı giriş yaptı.");
 
-                var user = await _userManager.FindByEmailAsync(Input.Email);
+                var roles = await _userManager.GetRolesAsync(user);
 
-                if (user != null)
-                {
-                    var roles = await _userManager.GetRolesAsync(user);
+                if (roles.Contains("Admin"))
+                    return LocalRedirect("/Admin");
 
-                    if (roles.Contains("Admin"))
-                        return LocalRedirect("/Admin");
+                if (roles.Contains("ChiefEditor"))
+                    return LocalRedirect("/Submission/OnKontrolListesi");
 
-                    if (roles.Contains("ChiefEditor"))
-                        return LocalRedirect("/Submission/OnKontrolListesi");
+                if (roles.Contains("Editor"))
+                    return LocalRedirect("/Submission/EditorDashboard");
 
-                    if (roles.Contains("Editor"))
-                        return LocalRedirect("/Submission/EditorDashboard");
+                if (roles.Contains("Author"))
+                    return LocalRedirect("/Submission/Makalelerim");
 
-                    if (roles.Contains("Author"))
-                        return LocalRedirect("/Submission/Makalelerim");
-
-                    if (roles.Contains("Reviewer"))
-                        return LocalRedirect("/Submission/MyReviews");
-                }
+                if (roles.Contains("Reviewer"))
+                    return LocalRedirect("/Submission/MyReviews");
 
                 return LocalRedirect("/");
             }

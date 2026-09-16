@@ -165,6 +165,19 @@ namespace MyDergiApp.Controllers
             settings.HeaderRightText = string.IsNullOrWhiteSpace(model.HeaderRightText)
                 ? null
                 : model.HeaderRightText.Trim();
+
+            // Dergi kimliği / karşılama / hakkında / ISSN / alt bilgi — formda vardı ama daha önce hiç kaydedilmiyordu
+            // JournalTitle DB'de NOT NULL; bos gonderilirse mevcut deger korunur
+            settings.JournalTitle = Clean(model.JournalTitle) ?? settings.JournalTitle ?? "MyDergiApp";
+            settings.JournalSubtitle = Clean(model.JournalSubtitle);
+            settings.HeroTitle = Clean(model.HeroTitle);
+            settings.HeroDescription = Clean(model.HeroDescription);
+            settings.AboutTitle = Clean(model.AboutTitle);
+            settings.AboutContent = Clean(model.AboutContent);
+            settings.PrintIssn = Clean(model.PrintIssn);
+            settings.OnlineIssn = Clean(model.OnlineIssn);
+            settings.FooterText = Clean(model.FooterText);
+
             if (removeHeaderLogo)
 {
     settings.HeaderLogoPath = null;
@@ -294,5 +307,8 @@ if (removeBannerImage)
             TempData["Success"] = "Ana sayfa ayarları güncellendi.";
             return RedirectToAction(nameof(Index));
         }
+
+        private static string? Clean(string? value)
+            => string.IsNullOrWhiteSpace(value) ? null : value.Trim();
     }
 }

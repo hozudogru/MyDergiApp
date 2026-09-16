@@ -124,6 +124,13 @@ using (var scope = app.Services.CreateScope())
         {
             var updated = false;
 
+            // Eski seed "admin" kullanici adi vermisti; giris e-posta ile yapildigi icin esitle.
+            if (!string.Equals(user.UserName, email, StringComparison.OrdinalIgnoreCase))
+            {
+                user.UserName = email;
+                updated = true;
+            }
+
             if (!user.EmailConfirmed)
             {
                 user.EmailConfirmed = true;
@@ -168,9 +175,11 @@ using (var scope = app.Services.CreateScope())
         return user;
     }
 
+    // Kullanici adi = e-posta: giris sayfasi e-posta ile arar, Register de UserName=Email yazar.
+    // (Onceden "admin" idi ve seed edilen admin login formundan giris yapamiyordu.)
     await EnsureUserAsync(
         "admin@dergi.com",
-        "admin",
+        "admin@dergi.com",
         "Admin123!",
         "Admin",
         "Sistem Yöneticisi");

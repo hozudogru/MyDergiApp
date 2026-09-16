@@ -14,6 +14,168 @@ namespace MyDergiApp.Controllers
         {
             _context = context;
         }
+
+        // ---------------- Sayı oluşturma / silme ----------------
+        // Not: Bu action'lar d47f567 commit'indeki yeniden yazımda kaybolmuştu; Index/ManageArticles view'ları onlara post ediyor.
+
+        [Authorize(Roles = "Admin")]
+        [HttpGet]
+        public IActionResult Create()
+        {
+            return View(new Issue
+            {
+                Year = DateTime.UtcNow.Year,
+                IsPublished = false
+            });
+        }
+
+        [Authorize(Roles = "Admin")]
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> Create(Issue model)
+        {
+            if (!ModelState.IsValid)
+                return View(model);
+
+            var now = DateTime.UtcNow;
+
+            var issue = new Issue
+            {
+                Volume = model.Volume.Trim(),
+                Number = model.Number.Trim(),
+                Year = model.Year,
+                Title = string.IsNullOrWhiteSpace(model.Title) ? null : model.Title.Trim(),
+                IsPublished = model.IsPublished,
+                PublishedAt = model.IsPublished ? now : null,
+                CreatedAt = now,
+                UpdatedAt = now
+            };
+
+            _context.Issues.Add(issue);
+            await _context.SaveChangesAsync();
+
+            TempData["Success"] = "Sayı oluşturuldu. Şimdi kapak, tam sayı PDF'i ve makaleleri ekleyebilirsiniz.";
+            return RedirectToAction(nameof(ManageArticles), new { id = issue.Id });
+        }
+
+        [Authorize(Roles = "Admin")]
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> Delete(int id)
+        {
+            var issue = await _context.Issues
+                .Include(i => i.Articles)
+                .FirstOrDefaultAsync(i => i.Id == id);
+
+            if (issue == null)
+                return NotFound();
+
+            if (issue.Articles.Any())
+            {
+                TempData["Error"] = "İçinde makale bulunan sayı silinemez. Önce makaleleri sayıdan çıkarınız.";
+                return RedirectToAction(nameof(Index));
+            }
+
+            if (issue.IsPublished)
+            {
+                TempData["Error"] = "Yayındaki sayı silinemez. Önce yayından kaldırınız.";
+                return RedirectToAction(nameof(Index));
+            }
+
+            _context.Issues.Remove(issue);
+            await _context.SaveChangesAsync();
+
+            TempData["Success"] = "Sayı silindi.";
+            return RedirectToAction(nameof(Index));
+        }
+
+        // ---------------- Sayıya makale ekleme / çıkarma ----------------
+
+        [Authorize(Roles = "Admin")]
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> AddArticle(int issueId, int submissionId, string? pages)
+        {
+            var issue = await _context.Issues.FirstOrDefaultAsync(i => i.Id == issueId);
+
+            if (issue == null)
+                return NotFound();
+
+            var submission = await _context.Submissions
+                .Include(s => s.Authors)
+                .FirstOrDefaultAsync(s => s.Id == submissionId);
+
+            if (submission == null || submission.Status != SubmissionStatus.KabulEdildi)
+            {
+                TempData["Error"] = "Sadece kabul edilmiş makaleler sayıya eklenebilir.";
+                return RedirectToAction(nameof(ManageArticles), new { id = issueId });
+            }
+
+            // Bir makale yalnızca tek bir sayıda yayınlanabilir
+            var alreadyPublished = await _context.PublishedArticles
+                .Include(a => a.Issue)
+                .FirstOrDefaultAsync(a => a.SubmissionId == submissionId);
+
+            if (alreadyPublished != null)
+            {
+                TempData["Error"] = alreadyPublished.IssueId == issueId
+                    ? "Bu makale zaten bu sayıya eklenmiş."
+                    : $"Bu makale zaten başka bir sayıda (Cilt {alreadyPublished.Issue?.Volume}, Sayı {alreadyPublished.Issue?.Number}) yer alıyor.";
+                return RedirectToAction(nameof(ManageArticles), new { id = issueId });
+            }
+
+            var maxSortOrder = await _context.PublishedArticles
+                .Where(a => a.IssueId == issueId)
+                .Select(a => (int?)a.SortOrder)
+                .MaxAsync() ?? 0;
+
+            var authorsText = string.Join(", ", submission.Authors
+                .OrderBy(a => a.SortOrder)
+                .Select(a => a.FullName)
+                .Where(n => !string.IsNullOrWhiteSpace(n)));
+
+            _context.PublishedArticles.Add(new PublishedArticle
+            {
+                IssueId = issueId,
+                SubmissionId = submissionId,
+                AuthorsText = string.IsNullOrWhiteSpace(authorsText) ? null : authorsText,
+                Pages = string.IsNullOrWhiteSpace(pages) ? null : pages.Trim(),
+                SortOrder = maxSortOrder + 1,
+                AddedAt = DateTime.UtcNow
+            });
+
+            issue.UpdatedAt = DateTime.UtcNow;
+            await _context.SaveChangesAsync();
+
+            TempData["Success"] = "Makale sayıya eklendi. Yayın PDF'ini makale satırındaki dosya düzenleme bağlantısından yükleyebilirsiniz.";
+            return RedirectToAction(nameof(ManageArticles), new { id = issueId });
+        }
+
+        [Authorize(Roles = "Admin")]
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> RemoveArticle(int id)
+        {
+            var article = await _context.PublishedArticles
+                .Include(a => a.Issue)
+                .FirstOrDefaultAsync(a => a.Id == id);
+
+            if (article == null)
+                return NotFound();
+
+            var issueId = article.IssueId;
+
+            _context.PublishedArticles.Remove(article);
+
+            if (article.Issue != null)
+                article.Issue.UpdatedAt = DateTime.UtcNow;
+
+            await _context.SaveChangesAsync();
+
+            TempData["Success"] = "Makale sayıdan çıkarıldı.";
+            return RedirectToAction(nameof(ManageArticles), new { id = issueId });
+        }
+
         [Authorize(Roles = "Admin")]
         [HttpGet]
         public IActionResult Edit(int id)

@@ -38,25 +38,12 @@ public class AppDbContext : IdentityDbContext<AppUser>
             .HasForeignKey(s => s.AuthorId)
             .OnDelete(DeleteBehavior.Restrict);
 
+        // SubmissionReviewer -> Submission: Submission.SubmissionReviewers koleksiyonuna acikca baglanir.
+        // Onceden WithMany() ile iki kez tanimlandigi icin EF koleksiyon icin golge bir "SubmissionId1" FK'si
+        // uretmis ve koleksiyon her zaman bos gelmisti (hakem Detail/DownloadFile'da 403 aliyordu).
         builder.Entity<SubmissionReviewer>()
             .HasOne(sr => sr.Submission)
-            .WithMany()
-            .HasForeignKey(sr => sr.SubmissionId)
-            .OnDelete(DeleteBehavior.Cascade);
-
-        builder.Entity<SubmissionReviewer>()
-            .HasIndex(x => new { x.SubmissionId, x.ReviewerId, x.ReviewRound })
-            .IsUnique();
-
-        builder.Entity<SubmissionAuthor>()
-            .HasOne(sa => sa.Submission)
-            .WithMany(s => s.Authors)
-            .HasForeignKey(sa => sa.SubmissionId)
-            .OnDelete(DeleteBehavior.Cascade);
-        
-        builder.Entity<SubmissionReviewer>()
-            .HasOne(sr => sr.Submission)
-            .WithMany()
+            .WithMany(s => s.SubmissionReviewers)
             .HasForeignKey(sr => sr.SubmissionId)
             .OnDelete(DeleteBehavior.Cascade);
 
@@ -66,9 +53,17 @@ public class AppDbContext : IdentityDbContext<AppUser>
             .HasForeignKey(sr => sr.ReviewerId)
             .OnDelete(DeleteBehavior.Restrict);
 
+        // Ayni hakem farkli turlarda yeniden atanabilir; benzersizlik tur bazindadir.
+        // (Eski (SubmissionId, ReviewerId) benzersiz indeksi 20260915170320_FixReviewerUniqueIndex ile kaldirildi.)
         builder.Entity<SubmissionReviewer>()
-            .HasIndex(sr => new { sr.SubmissionId, sr.ReviewerId })
+            .HasIndex(x => new { x.SubmissionId, x.ReviewerId, x.ReviewRound })
             .IsUnique();
+
+        builder.Entity<SubmissionAuthor>()
+            .HasOne(sa => sa.Submission)
+            .WithMany(s => s.Authors)
+            .HasForeignKey(sa => sa.SubmissionId)
+            .OnDelete(DeleteBehavior.Cascade);
 
         builder.Entity<Submission>()
     .HasOne(s => s.AssignedChiefEditor)
