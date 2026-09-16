@@ -7,40 +7,62 @@ public class EmailService
     private const int TimeoutMilliseconds = 20000;
 
     private readonly SmtpSettingsService _settingsService;
+    private readonly ILogger<EmailService> _logger;
 
-    public EmailService(SmtpSettingsService settingsService)
+    public EmailService(SmtpSettingsService settingsService, ILogger<EmailService> logger)
     {
         _settingsService = settingsService;
+        _logger = logger;
     }
 
-    public Task SendEmailAsync(string to, string subject, string body)
+    /// <summary>
+    /// Bildirim e-postasi gonderir. SMTP hatasi istegi COKERTMEZ: hata loglanir ve false doner.
+    /// (Onceden makale kaydedildikten sonra atilan e-posta patlayinca yazar 500 goruyor ve makaleyi
+    /// tekrar gonderiyordu.) Baglanti sorununu gormek icin Admin > SMTP Ayarlari > Deneme Gonder kullanilir.
+    /// </summary>
+    public Task<bool> SendEmailAsync(string to, string subject, string body)
         => SendEmailWithAttachmentsAsync(to, subject, body, null);
 
-    public async Task SendEmailWithAttachmentsAsync(
+    public async Task<bool> SendEmailWithAttachmentsAsync(
         string to,
         string subject,
         string body,
         List<string>? attachmentPaths = null)
     {
-        var (settings, _) = await _settingsService.GetEffectiveAsync();
-
-        using var mail = BuildMessage(settings, to, subject, body);
-
-        if (attachmentPaths != null)
+        if (string.IsNullOrWhiteSpace(to))
         {
-            foreach (var relativePath in attachmentPaths.Where(x => !string.IsNullOrWhiteSpace(x)))
-            {
-                var cleanRelative = relativePath!.TrimStart('/').Replace("/", Path.DirectorySeparatorChar.ToString());
-                var fullPath = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", cleanRelative);
-
-                if (System.IO.File.Exists(fullPath))
-                {
-                    mail.Attachments.Add(new Attachment(fullPath));
-                }
-            }
+            _logger.LogWarning("E-posta gönderilmedi: alıcı adresi boş. Konu: {Subject}", subject);
+            return false;
         }
 
-        await SendCoreAsync(settings, mail);
+        try
+        {
+            var (settings, _) = await _settingsService.GetEffectiveAsync();
+
+            using var mail = BuildMessage(settings, to, subject, body);
+
+            if (attachmentPaths != null)
+            {
+                foreach (var relativePath in attachmentPaths.Where(x => !string.IsNullOrWhiteSpace(x)))
+                {
+                    var cleanRelative = relativePath!.TrimStart('/').Replace("/", Path.DirectorySeparatorChar.ToString());
+                    var fullPath = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", cleanRelative);
+
+                    if (System.IO.File.Exists(fullPath))
+                    {
+                        mail.Attachments.Add(new Attachment(fullPath));
+                    }
+                }
+            }
+
+            await SendCoreAsync(settings, mail);
+            return true;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "E-posta gönderilemedi. Alıcı: {To}, Konu: {Subject}", to, subject);
+            return false;
+        }
     }
 
     /// <summary>

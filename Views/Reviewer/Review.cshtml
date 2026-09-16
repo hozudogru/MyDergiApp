@@ -317,14 +317,14 @@
                                           placeholder="Bu dosyanın içeriğini kısaca açıklayabilirsiniz...">@(existingReview?.ReviewerAttachmentNote ?? "")</textarea>
                             </div>
 
-                            <input type="hidden" name="sendAttachmentToAuthor" value="false" />
-
                             <div class="form-check mb-0">
                                 <input class="form-check-input"
                                        type="checkbox"
                                        name="sendAttachmentToAuthor"
                                        value="true"
                                 @(existingReview?.SendAttachmentToAuthor == true ? "checked" : "") />
+                                @* Hidden alan checkbox'tan SONRA gelmeli: model binder ilk degeri alir, onde olunca kutu hep false baglaniyordu *@
+                                <input type="hidden" name="sendAttachmentToAuthor" value="false" />
 
                                 <label class="form-check-label">
                                     Bu ek dosya yazara iletilebilir

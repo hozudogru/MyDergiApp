@@ -110,15 +110,24 @@ namespace MyDergiApp.Areas.Identity.Pages.Account
                 return Page();
             }
 
+            // lockoutOnFailure: true -> Identity varsayilani 5 hatali denemede 5 dk kilit (kaba kuvvete karsi)
             var result = await _signInManager.PasswordSignInAsync(
                 user,
                 Input.Password,
                 Input.RememberMe,
-                lockoutOnFailure: false);
+                lockoutOnFailure: true);
 
             if (result.Succeeded)
             {
                 _logger.LogInformation("Kullanıcı giriş yaptı.");
+
+                // Kullanici korumali bir sayfadan geldiyse (ReturnUrl) oraya don; yoksa role gore panel
+                if (!string.IsNullOrWhiteSpace(returnUrl) &&
+                    returnUrl != Url.Content("~/") &&
+                    Url.IsLocalUrl(returnUrl))
+                {
+                    return LocalRedirect(returnUrl);
+                }
 
                 var roles = await _userManager.GetRolesAsync(user);
 

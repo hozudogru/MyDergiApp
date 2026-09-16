@@ -192,7 +192,31 @@ if (!app.Environment.IsDevelopment())
 }
 
 app.UseHttpsRedirection();
-app.UseStaticFiles();
+
+// Makale dosyalari (/uploads/submissions/**: ana metin, revizyon, hakem ekleri) statik olarak servis EDILMEZ;
+// bu yol SubmissionController.ServeSubmissionFile'a duser ve orada yetki kontrolu yapilir.
+// Kapak, sayi PDF'i, yayinlanan makale PDF'i, logo vb. (/uploads/covers, /uploads/published ...) herkese aciktir.
+app.UseWhen(
+    ctx => !ctx.Request.Path.StartsWithSegments("/uploads/submissions"),
+    branch => branch.UseStaticFiles());
+
+// Varsayilan Identity UI'in istenmeyen sayfalari: hesap silme (FK'lar yuzunden 500 verir, admin pasif/silme
+// kontrollerini atlar) ve e-posta degistirme (UserName ile e-posta ayrisir, kullanici yeni e-postayla giremez).
+app.Use(async (context, next) =>
+{
+    var path = context.Request.Path;
+
+    if (path.StartsWithSegments("/Identity/Account/Manage/DeletePersonalData", StringComparison.OrdinalIgnoreCase) ||
+        path.StartsWithSegments("/Identity/Account/Manage/PersonalData", StringComparison.OrdinalIgnoreCase) ||
+        path.StartsWithSegments("/Identity/Account/Manage/DownloadPersonalData", StringComparison.OrdinalIgnoreCase) ||
+        path.StartsWithSegments("/Identity/Account/Manage/Email", StringComparison.OrdinalIgnoreCase))
+    {
+        context.Response.StatusCode = StatusCodes.Status404NotFound;
+        return;
+    }
+
+    await next();
+});
 
 app.UseRouting();
 

@@ -31,6 +31,6 @@ namespace MyDergiApp.Models
 
         public string? PdfFilePath { get; set; }
 
-        public DateTime CreatedAt { get; set; } = DateTime.Now;
+        public DateTime CreatedAt { get; set; } = DateTime.UtcNow; // timestamptz: Npgsql yalnizca UTC kabul eder
     }
 }

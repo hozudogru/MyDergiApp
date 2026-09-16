@@ -39,6 +39,13 @@ namespace MyDergiApp.Controllers
             return User.FindFirstValue(ClaimTypes.NameIdentifier)!;
         }
 
+        private static readonly HashSet<string> AllowedSubmissionFileExtensions = new(StringComparer.OrdinalIgnoreCase)
+        {
+            ".pdf", ".doc", ".docx", ".xls", ".xlsx", ".ppt", ".pptx", ".odt", ".rtf", ".txt", ".zip", ".jpg", ".jpeg", ".png"
+        };
+
+        private const long MaxSubmissionFileSizeBytes = 50L * 1024 * 1024; // 50 MB
+
         private bool IsAdminOrEditor()
         {
             return User.IsInRole("Admin") || User.IsInRole("Editor") || User.IsInRole("ChiefEditor");
@@ -55,9 +62,25 @@ namespace MyDergiApp.Controllers
             if (file == null || file.Length == 0)
                 return;
 
+            // Uzanti beyaz listesi + boyut siniri: yuklemeler disk'e yaziliyor ve yetkili kullanicilara servis ediliyor;
+            // .html/.svg/.exe gibi dosyalar barindirilmasin.
+            var ext = Path.GetExtension(file.FileName).ToLowerInvariant();
+
+            if (!AllowedSubmissionFileExtensions.Contains(ext))
+            {
+                TempData["Error"] = $"'{file.FileName}' yüklenmedi: yalnızca PDF, Word (doc/docx), Excel (xls/xlsx), PowerPoint (ppt/pptx), " +
+                                    "OpenDocument (odt), RTF, TXT, ZIP ve JPG/PNG dosyaları kabul edilir.";
+                return;
+            }
+
+            if (file.Length > MaxSubmissionFileSizeBytes)
+            {
+                TempData["Error"] = $"'{file.FileName}' yüklenmedi: dosya boyutu en fazla {MaxSubmissionFileSizeBytes / (1024 * 1024)} MB olabilir.";
+                return;
+            }
+
             Directory.CreateDirectory(folderPath);
 
-            var ext = Path.GetExtension(file.FileName);
             var generatedFileName = $"{Guid.NewGuid()}{ext}";
             var fullPath = Path.Combine(folderPath, generatedFileName);
 
@@ -393,25 +416,68 @@ namespace MyDergiApp.Controllers
                 return RedirectToAction(nameof(EditorDecision), new { id = submissionId });
             }
 
-            _context.SubmissionReviewers.Add(new SubmissionReviewer
+            // Hakem makalenin yazarlarindan biri olamaz
+            var reviewerEmail = reviewer.Email ?? string.Empty;
+            var isOwnAuthor = submission.AuthorId == reviewerId ||
+                              await _context.SubmissionAuthors.AnyAsync(a =>
+                                  a.SubmissionId == submissionId &&
+                                  a.Email.ToLower() == reviewerEmail.ToLower());
+
+            if (isOwnAuthor)
             {
-                SubmissionId = submission.Id,
-                ReviewerId = reviewerId,
-                ReviewRound = submission.CurrentReviewRound,
-                Status = ReviewerAssignmentStatus.Assigned,
+                TempData["Error"] = "Seçilen kullanıcı bu makalenin yazarlarından biri; kendi makalesine hakem atanamaz.";
+                return RedirectToAction(nameof(EditorDecision), new { id = submissionId });
+            }
 
-                AssignedAt = DateTime.UtcNow,
-                DueDate = DateTime.UtcNow.AddDays(15),
+            if (!reviewer.IsActive)
+            {
+                TempData["Error"] = "Seçilen hakem pasif durumda; önce hesabı aktifleştirin.";
+                return RedirectToAction(nameof(EditorDecision), new { id = submissionId });
+            }
 
-                CompletedAt = null,
-                ReviewNote = null,
+            // Ayni turda daha once iptal edilmis / reddedilmis bir atama varsa yeni satir eklemek
+            // (SubmissionId, ReviewerId, ReviewRound) benzersiz indeksini patlatir; mevcut kaydi yeniden aktive et.
+            var previousAssignment = await _context.SubmissionReviewers
+                .FirstOrDefaultAsync(sr =>
+                    sr.SubmissionId == submissionId &&
+                    sr.ReviewerId == reviewerId &&
+                    sr.ReviewRound == submission.CurrentReviewRound);
 
-                ReminderCount = 0,
-                ReminderSentAt = null,
-                CancelReason = null,
-                CancelledAt = null,
-                CancelledByUserId = null
-            });
+            if (previousAssignment != null)
+            {
+                previousAssignment.Status = ReviewerAssignmentStatus.Assigned;
+                previousAssignment.AssignedAt = DateTime.UtcNow;
+                previousAssignment.DueDate = DateTime.UtcNow.AddDays(15);
+                previousAssignment.CompletedAt = null;
+                previousAssignment.ReviewNote = null;
+                previousAssignment.ReminderCount = 0;
+                previousAssignment.ReminderSentAt = null;
+                previousAssignment.CancelReason = null;
+                previousAssignment.CancelledAt = null;
+                previousAssignment.CancelledByUserId = null;
+            }
+            else
+            {
+                _context.SubmissionReviewers.Add(new SubmissionReviewer
+                {
+                    SubmissionId = submission.Id,
+                    ReviewerId = reviewerId,
+                    ReviewRound = submission.CurrentReviewRound,
+                    Status = ReviewerAssignmentStatus.Assigned,
+
+                    AssignedAt = DateTime.UtcNow,
+                    DueDate = DateTime.UtcNow.AddDays(15),
+
+                    CompletedAt = null,
+                    ReviewNote = null,
+
+                    ReminderCount = 0,
+                    ReminderSentAt = null,
+                    CancelReason = null,
+                    CancelledAt = null,
+                    CancelledByUserId = null
+                });
+            }
 
             submission.Status = SubmissionStatus.HakemDegerlendirmesinde;
             submission.UpdatedAt = DateTime.UtcNow;
@@ -1604,6 +1670,32 @@ namespace MyDergiApp.Controllers
         }
 
 
+        /// <summary>
+        /// /uploads/submissions/** yolu Program.cs'te statik dosya servisinden cikarildi; makale metni, revizyon ve
+        /// hakem ek dosyalari buradan, DownloadFile ile ayni yetki kontrolunden gecerek indirilir.
+        /// Boylece view'lardaki mevcut dogrudan baglantilar (Url.Content(path)) calismaya devam eder ama anonim erisim kapanir.
+        /// </summary>
+        [Authorize]
+        [HttpGet("/uploads/submissions/{**relativePath}")]
+        public async Task<IActionResult> ServeSubmissionFile(string relativePath)
+        {
+            if (string.IsNullOrWhiteSpace(relativePath) || relativePath.Contains(".."))
+                return NotFound();
+
+            var storedPath = "/uploads/submissions/" + relativePath.Replace("\\", "/").TrimStart('/');
+
+            var fileId = await _context.SubmissionFiles
+                .Where(f => f.StoredFilePath == storedPath)
+                .Select(f => (int?)f.Id)
+                .FirstOrDefaultAsync();
+
+            // SubmissionFiles kaydi olmayan bir dosya sistemde tanimsizdir; servis edilmez.
+            if (fileId == null)
+                return NotFound();
+
+            return await DownloadFile(fileId.Value);
+        }
+
         [Authorize]
         [HttpGet]
         public async Task<IActionResult> DownloadFile(int id)
@@ -1682,6 +1774,12 @@ namespace MyDergiApp.Controllers
                 {
                     canDownload = true;
                 }
+            }
+
+            // Dosyayi yukleyen kullanici (orn. hakem kendi ek dosyasini) her durumda gorebilir
+            if (!canDownload && !string.IsNullOrEmpty(file.UploadedByUserId) && file.UploadedByUserId == currentUserId)
+            {
+                canDownload = true;
             }
 
             if (!canDownload)

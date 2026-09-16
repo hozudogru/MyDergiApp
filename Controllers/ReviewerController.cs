@@ -173,6 +173,37 @@ namespace MyDergiApp.Controllers
             if (submission == null)
                 return NotFound();
 
+            // Nihai karar verilmis makaleye rapor gonderilemez
+            if (submission.Status == SubmissionStatus.KabulEdildi ||
+                submission.Status == SubmissionStatus.Reddedildi ||
+                submission.Status == SubmissionStatus.GeriCekildi)
+            {
+                TempData["Error"] = "Bu makale için nihai karar verilmiştir; değerlendirme gönderilemez.";
+                return RedirectToAction(nameof(Index));
+            }
+
+            // Ek dosya dogrulamasi EN BASTA yapilir: onceden kayit + e-posta sonrasi kontrol ediliyordu,
+            // hatali uzantida yazilan degerlendirme kayboluyor ve editore olmayan rapor icin e-posta gidiyordu.
+            string? attachmentExtension = null;
+
+            if (reviewerAttachment != null && reviewerAttachment.Length > 0)
+            {
+                var allowedAttachmentExtensions = new[] { ".pdf", ".doc", ".docx", ".jpg", ".jpeg", ".png" };
+                attachmentExtension = Path.GetExtension(reviewerAttachment.FileName).ToLowerInvariant();
+
+                if (!allowedAttachmentExtensions.Contains(attachmentExtension))
+                {
+                    TempData["Error"] = "Sadece PDF, DOC, DOCX, JPG, JPEG veya PNG dosyası yükleyebilirsiniz. Değerlendirmeniz kaydedilmedi; dosyayı düzeltip tekrar gönderin.";
+                    return RedirectToAction(nameof(Review), new { id = submissionId });
+                }
+
+                if (reviewerAttachment.Length > 25L * 1024 * 1024)
+                {
+                    TempData["Error"] = "Ek dosya en fazla 25 MB olabilir. Değerlendirmeniz kaydedilmedi.";
+                    return RedirectToAction(nameof(Review), new { id = submissionId });
+                }
+            }
+
             var assignment = await _context.SubmissionReviewers
                 .FirstOrDefaultAsync(x =>
                     x.SubmissionId == submissionId &&
@@ -284,23 +315,26 @@ namespace MyDergiApp.Controllers
 
                 TempData["Success"] = "Hakem değerlendirmesi başarıyla gönderildi.";
 
-                try
+                // Bildirim makalenin atanmis alan editorune gider (onceden sabit "editor@mail.com" adresine gidiyordu).
+                // EmailService hata firlatmaz; gonderilemezse loglanir, degerlendirme kaydi etkilenmez.
+                var editorEmail = string.IsNullOrEmpty(submission.AssignedSectionEditorId)
+                    ? null
+                    : (await _userManager.FindByIdAsync(submission.AssignedSectionEditorId))?.Email;
+
+                if (!string.IsNullOrWhiteSpace(editorEmail))
                 {
                     await _emailService.SendEmailAsync(
-                        "editor@mail.com",
-                        "Yeni Hakem Değerlendirmesi",
+                        editorEmail,
+                        $"Yeni Hakem Değerlendirmesi #{submission.Id}",
                         $"""
                         Makale için hakem değerlendirmesi gönderildi.<br><br>
-                        <strong>Makale:</strong> {submission.Title}<br>
-                        <strong>Karar:</strong> {review.Decision ?? "-"}<br>
+                        <strong>Makale:</strong> {System.Net.WebUtility.HtmlEncode(submission.Title)}<br>
+                        <strong>Tur:</strong> {submission.CurrentReviewRound}<br>
+                        <strong>Karar:</strong> {System.Net.WebUtility.HtmlEncode(review.Decision ?? "-")}<br>
                         <strong>Genel Puan:</strong> {(review.OverallScore.HasValue ? review.OverallScore + "/10" : "-")}<br>
                         <strong>Etik Uyarı:</strong> {(review.HasEthicalIssue ? "Var" : "Yok")}
                         """
                     );
-                }
-                catch
-                {
-                    // Mail gönderilemese bile değerlendirme kaydı bozulmasın.
                 }
             }
 

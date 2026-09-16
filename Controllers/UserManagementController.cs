@@ -118,9 +118,22 @@ public class UserManagementController : Controller
         var hasReviewerAssignment = await _context.SubmissionReviewers
             .AnyAsync(sr => sr.ReviewerId == user.Id);
 
+        // Restrict/NoAction FK'lar: bas editor atamasi, karar veren editor, hakem raporlari, yukledigi dosyalar
+        var hasSubmissionAsChiefEditor = await _context.Submissions
+            .AnyAsync(s => s.AssignedChiefEditorId == user.Id);
+
+        var hasDecision = await _context.Submissions
+            .AnyAsync(s => s.DecisionByUserId == user.Id);
+
+        var hasReviews = await _context.Reviews
+            .AnyAsync(r => r.ReviewerId == user.Id);
+
         if (hasSubmissionAsAuthor ||
             hasSubmissionAsEditor ||
-            hasReviewerAssignment)
+            hasReviewerAssignment ||
+            hasSubmissionAsChiefEditor ||
+            hasDecision ||
+            hasReviews)
         {
             user.IsActive = false;
             await _userManager.UpdateAsync(user);
@@ -140,25 +153,9 @@ public class UserManagementController : Controller
         TempData["Error"] = string.Join(" ", result.Errors.Select(e => e.Description));
         return RedirectToAction(nameof(Index));
     }
-    [Authorize(Roles = "Admin")]
-    [HttpGet]
-    public async Task<IActionResult> TestMail()
-    {
-        try
-        {
-            await _emailService.SendEmailAsync(
-                "hozudogru@gmail.com",
-                "SMTP Test Mail",
-                "<h3>Mail sistemi çalışıyor 👍</h3><p>Her şey yolunda.</p>"
-            );
+    // TestMail kaldirildi: sabit adrese gonderiyordu ve view'daki link ("MailTest") zaten yanlisti.
+    // SMTP denemesi artik Admin > SMTP Ayarlari (AdminController.SmtpTest) uzerinden yapilir.
 
-            return Content("✅ Mail başarıyla gönderildi.");
-        }
-        catch (Exception ex)
-        {
-            return Content("❌ Mail hatası: " + ex.Message);
-        }
-    }
     [HttpGet]
     public async Task<IActionResult> Edit(string id)
     {
@@ -257,6 +254,25 @@ public class UserManagementController : Controller
         var user = await _userManager.FindByIdAsync(model.Id);
         if (user == null)
             return NotFound();
+
+        // ToggleActive'deki korumalar burada da gecerli: admin kendini veya bir Admin'i bu formdan pasif yapamaz
+        // (tek admin kendini kilitleyip sistemden dusuyordu).
+        if (!model.IsActive && user.IsActive)
+        {
+            var currentUserId = _userManager.GetUserId(User);
+
+            if (user.Id == currentUserId)
+            {
+                ModelState.AddModelError(nameof(model.IsActive), "Kendi hesabınızı pasif yapamazsınız.");
+                return View(model);
+            }
+
+            if (await _userManager.IsInRoleAsync(user, "Admin"))
+            {
+                ModelState.AddModelError(nameof(model.IsActive), "Admin rolündeki kullanıcı pasif yapılamaz. Önce rolünü değiştirin.");
+                return View(model);
+            }
+        }
 
         user.FullName = model.FullName;
         user.Email = model.Email;

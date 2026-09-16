@@ -1,13 +1,18 @@
-﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using MyDergiApp.Data;
-using MyDergiApp.Models;
+using MyDergiApp.Helpers;
 
 namespace MyDergiApp.Areas.Admin.Controllers
 {
+    /// <summary>
+    /// Admin icin salt okunur "tum makaleler" listesi. Durum degisiklikleri yalnizca
+    /// SubmissionController'daki is akisi action'lari uzerinden yapilir; buradaki eski
+    /// UpdateStatus (CSRF korumasiz, is akisini atlayan, Editor'e acik) kaldirildi.
+    /// </summary>
     [Area("Admin")]
-    [Authorize(Roles = "Admin,Editor")]
+    [Authorize(Roles = "Admin")]
     public class SubmissionManagementController : Controller
     {
         private readonly AppDbContext _context;
@@ -25,7 +30,8 @@ namespace MyDergiApp.Areas.Admin.Controllers
         [HttpGet]
         public async Task<IActionResult> GetSubmissions()
         {
-            var data = await _context.Submissions
+            var rows = await _context.Submissions
+                .AsNoTracking()
                 .Include(s => s.Author)
                 .OrderByDescending(s => s.CreatedAt)
                 .Select(s => new
@@ -33,40 +39,23 @@ namespace MyDergiApp.Areas.Admin.Controllers
                     s.Id,
                     s.Title,
                     Author = s.Author != null ? s.Author.FullName : s.AuthorId,
-                    Status = s.Status.ToString(),
+                    s.Status,
                     s.CreatedAt
                 })
                 .ToListAsync();
 
-            return Json(new { data });
-        }
-
-        [HttpPost]
-        public async Task<IActionResult> UpdateStatus(int id)
-        {
-            var submission = await _context.Submissions.FindAsync(id);
-
-            if (submission == null)
-                return NotFound(new { success = false, message = "Makale bulunamadı." });
-
-            submission.Status = submission.Status switch
+            var data = rows.Select(s => new
             {
-                SubmissionStatus.Gonderildi => SubmissionStatus.HakemDegerlendirmesinde,
-                SubmissionStatus.HakemDegerlendirmesinde => SubmissionStatus.KabulEdildi,
-                SubmissionStatus.KabulEdildi => SubmissionStatus.Reddedildi,
-                _ => SubmissionStatus.Gonderildi
-            };
-
-            submission.UpdatedAt = DateTime.UtcNow;
-
-            await _context.SaveChangesAsync();
-
-            return Json(new
-            {
-                success = true,
-                message = "Durum güncellendi.",
-                status = submission.Status.ToString()
+                id = s.Id,
+                title = s.Title,
+                author = s.Author,
+                status = s.Status.ToString(),
+                statusText = StatusDisplayHelper.GetSubmissionStatusText(s.Status),
+                statusBadgeClass = StatusDisplayHelper.GetSubmissionStatusBadgeClass(s.Status),
+                createdAt = s.CreatedAt
             });
+
+            return Json(new { data });
         }
     }
 }

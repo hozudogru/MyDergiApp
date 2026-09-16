@@ -18,7 +18,7 @@ namespace MyDergiApp.Models
 
         public string Note { get; set; } = string.Empty;
 
-        public DateTime UploadedAt { get; set; } = DateTime.Now;
+        public DateTime UploadedAt { get; set; } = DateTime.UtcNow; // timestamptz: Npgsql yalnizca UTC kabul eder
         public int ReviewRound { get; set; } = 1;
     }
 }
