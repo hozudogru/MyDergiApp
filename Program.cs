@@ -1,4 +1,6 @@
+using System.Net;
 using Microsoft.AspNetCore.Authentication;
+using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using MyDergiApp.Data;
@@ -50,7 +52,22 @@ builder.Services.ConfigureApplicationCookie(options =>
 builder.Services.AddControllersWithViews();
 builder.Services.AddRazorPages();
 
+// Reverse proxy (canlida Plesk nginx -> 127.0.0.1:5002). X-Forwarded-For / X-Forwarded-Proto
+// basliklarini yalnizca ayni makinedeki proxy'den (loopback) kabul et; boylece Request.Scheme
+// "https" olur, yonlendirmeler ve HSTS dogru calisir, loglarda gercek istemci IP'si gorunur.
+builder.Services.Configure<ForwardedHeadersOptions>(options =>
+{
+    options.ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto;
+    options.KnownProxies.Clear();
+    options.KnownNetworks.Clear();
+    options.KnownProxies.Add(IPAddress.Loopback);
+    options.KnownProxies.Add(IPAddress.IPv6Loopback);
+});
+
 var app = builder.Build();
+
+// Pipeline'in en basinda olmali: sonraki middleware'ler (HTTPS yonlendirme, HSTS, auth) dogru scheme'i gorsun
+app.UseForwardedHeaders();
 
 // DB migrate + roles + default admin
 using (var scope = app.Services.CreateScope())
