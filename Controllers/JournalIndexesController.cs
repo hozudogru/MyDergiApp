@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using MyDergiApp.Data;
+using MyDergiApp.Helpers;
 using MyDergiApp.Models;
 
 namespace MyDergiApp.Controllers
@@ -103,6 +104,8 @@ namespace MyDergiApp.Controllers
                     ModelState.AddModelError("LogoPath", uploadResult.ErrorMessage ?? "Logo yüklenemedi.");
                     return View(model);
                 }
+
+                UploadHelper.TryDeleteWebFile(_env, item.LogoPath); // eski logo yetim kalmasin
                 item.LogoPath = uploadResult.Path;
             }
 
@@ -119,6 +122,8 @@ namespace MyDergiApp.Controllers
             var item = await _context.JournalIndexes.FindAsync(id);
             if (item == null)
                 return NotFound();
+
+            UploadHelper.TryDeleteWebFile(_env, item.LogoPath);
 
             _context.JournalIndexes.Remove(item);
             await _context.SaveChangesAsync();
@@ -145,22 +150,14 @@ namespace MyDergiApp.Controllers
 
         private async Task<(bool Success, string? Path, string? ErrorMessage)> SaveLogoAsync(IFormFile logoFile)
         {
-            var allowedExtensions = new[] { ".jpg", ".jpeg", ".png", ".webp" };
-            var ext = Path.GetExtension(logoFile.FileName).ToLowerInvariant();
+            var error = UploadHelper.Validate(logoFile, UploadHelper.ImageExtensions, UploadHelper.MaxImageBytes, "İndeks logosu");
 
-            if (!allowedExtensions.Contains(ext))
-                return (false, null, "Sadece jpg, jpeg, png veya webp görsel yüklenebilir.");
+            if (error != null)
+                return (false, null, error);
 
-            var folder = Path.Combine(_env.WebRootPath, "uploads", "indexes");
-            Directory.CreateDirectory(folder);
+            var path = await UploadHelper.SaveAsync(_env, logoFile, "indexes", string.Empty);
 
-            var fileName = $"{Guid.NewGuid()}{ext}";
-            var fullPath = Path.Combine(folder, fileName);
-
-            await using var stream = new FileStream(fullPath, FileMode.Create);
-            await logoFile.CopyToAsync(stream);
-
-            return (true, $"/uploads/indexes/{fileName}", null);
+            return (true, path, null);
         }
     }
 }

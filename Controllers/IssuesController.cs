@@ -10,10 +10,12 @@ namespace MyDergiApp.Controllers
     public class IssuesController : Controller
     {
         private readonly AppDbContext _context;
+        private readonly IWebHostEnvironment _env;
 
-        public IssuesController(AppDbContext context)
+        public IssuesController(AppDbContext context, IWebHostEnvironment env)
         {
             _context = context;
+            _env = env;
         }
 
         // ---------------- Sayı oluşturma / silme ----------------
@@ -223,6 +225,10 @@ namespace MyDergiApp.Controllers
             issue.IsPublished = !issue.IsPublished;
             issue.UpdatedAt = DateTime.UtcNow;
 
+            // Yayin tarihi ilk yayina alista yazilir; UpdatedAt her ust veri degisikliginde degistigi icin yayin tarihi olarak kullanilamaz
+            if (issue.IsPublished && issue.PublishedAt == null)
+                issue.PublishedAt = DateTime.UtcNow;
+
             await _context.SaveChangesAsync();
 
             TempData["Success"] = issue.IsPublished
@@ -273,33 +279,16 @@ namespace MyDergiApp.Controllers
 
             if (coverImage != null && coverImage.Length > 0)
             {
-                var ext = Path.GetExtension(coverImage.FileName).ToLowerInvariant();
-                var allowedExtensions = new[] { ".jpg", ".jpeg", ".png", ".webp" };
+                var error = UploadHelper.Validate(coverImage, UploadHelper.ImageExtensions, UploadHelper.MaxImageBytes, "Kapak görseli");
 
-                if (!allowedExtensions.Contains(ext))
+                if (error != null)
                 {
-                    TempData["Error"] = "Kapak görseli yalnızca jpg, jpeg, png veya webp olabilir.";
+                    TempData["Error"] = error;
                     return RedirectToAction("ManageArticles", new { id });
                 }
 
-                var uploadRoot = Path.Combine(
-                    Directory.GetCurrentDirectory(),
-                    "wwwroot",
-                    "uploads",
-                    "covers"
-                );
-
-                Directory.CreateDirectory(uploadRoot);
-
-                var fileName = $"issue_cover_{issue.Id}_{Guid.NewGuid()}{ext}";
-                var filePath = Path.Combine(uploadRoot, fileName);
-
-                using (var stream = new FileStream(filePath, FileMode.Create))
-                {
-                    await coverImage.CopyToAsync(stream);
-                }
-
-                issue.CoverImagePath = "/uploads/covers/" + fileName;
+                UploadHelper.TryDeleteWebFile(_env, issue.CoverImagePath); // eski kapak yetim kalmasin
+                issue.CoverImagePath = await UploadHelper.SaveAsync(_env, coverImage, "covers", $"issue_cover_{issue.Id}_");
             }
 
             await _context.SaveChangesAsync();
@@ -318,6 +307,10 @@ namespace MyDergiApp.Controllers
             var articles = await _context.PublishedArticles
                 .Where(x => articleIds.Contains(x.Id))
                 .ToListAsync();
+
+            // Tek istekte yalnizca ayni sayinin makaleleri yeniden siralanabilir
+            if (articles.Count == 0 || articles.Select(x => x.IssueId).Distinct().Count() != 1)
+                return BadRequest("Sıralanan makaleler aynı sayıya ait olmalıdır.");
 
             for (int i = 0; i < articleIds.Count; i++)
             {
@@ -360,32 +353,16 @@ namespace MyDergiApp.Controllers
                 return RedirectToAction("ManageArticles", new { id });
             }
 
-            var ext = Path.GetExtension(fullIssuePdf.FileName).ToLowerInvariant();
+            var error = UploadHelper.Validate(fullIssuePdf, UploadHelper.PdfExtensions, UploadHelper.MaxPdfBytes, "Tam sayı dosyası");
 
-            if (ext != ".pdf")
+            if (error != null)
             {
-                TempData["Error"] = "Tam sayı dosyası yalnızca PDF formatında olmalıdır.";
+                TempData["Error"] = error;
                 return RedirectToAction("ManageArticles", new { id });
             }
 
-            var uploadRoot = Path.Combine(
-                Directory.GetCurrentDirectory(),
-                "wwwroot",
-                "uploads",
-                "issues"
-            );
-
-            Directory.CreateDirectory(uploadRoot);
-
-            var fileName = $"issue_full_{issue.Id}_{Guid.NewGuid()}.pdf";
-            var filePath = Path.Combine(uploadRoot, fileName);
-
-            using (var stream = new FileStream(filePath, FileMode.Create))
-            {
-                await fullIssuePdf.CopyToAsync(stream);
-            }
-
-            issue.FullIssuePdfPath = "/uploads/issues/" + fileName;
+            UploadHelper.TryDeleteWebFile(_env, issue.FullIssuePdfPath); // eski PDF yetim kalmasin
+            issue.FullIssuePdfPath = await UploadHelper.SaveAsync(_env, fullIssuePdf, "issues", $"issue_full_{issue.Id}_");
             issue.UpdatedAt = DateTime.UtcNow;
 
             await _context.SaveChangesAsync();
@@ -419,51 +396,31 @@ namespace MyDergiApp.Controllers
             if (article == null)
                 return NotFound();
 
-            var uploadRoot = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "uploads", "published");
-            Directory.CreateDirectory(uploadRoot);
+            // Once iki dosyayi da dogrula, sonra kaydet (biri hataliysa digeri yarim kalmasin)
+            string? pdfError = pdfFile != null && pdfFile.Length > 0
+                ? UploadHelper.Validate(pdfFile, UploadHelper.PdfExtensions, UploadHelper.MaxPdfBytes, "Yayın PDF dosyası")
+                : null;
+
+            string? originalError = originalFile != null && originalFile.Length > 0
+                ? UploadHelper.Validate(originalFile, UploadHelper.DocumentExtensions, UploadHelper.MaxDocumentBytes, "Makale kaynak dosyası")
+                : null;
+
+            if (pdfError != null || originalError != null)
+            {
+                TempData["Error"] = pdfError ?? originalError;
+                return RedirectToAction("EditPublishedArticleFile", new { id });
+            }
 
             if (pdfFile != null && pdfFile.Length > 0)
             {
-                var ext = Path.GetExtension(pdfFile.FileName).ToLowerInvariant();
-
-                if (ext != ".pdf")
-                {
-                    TempData["Error"] = "PDF dosyası yalnızca .pdf formatında olmalıdır.";
-                    return RedirectToAction("EditPublishedArticleFile", new { id });
-                }
-
-                var fileName = $"published_{article.Id}_{Guid.NewGuid()}{ext}";
-                var filePath = Path.Combine(uploadRoot, fileName);
-
-                using (var stream = new FileStream(filePath, FileMode.Create))
-                {
-                    await pdfFile.CopyToAsync(stream);
-                }
-
-                article.PdfFilePath = "/uploads/published/" + fileName;
+                UploadHelper.TryDeleteWebFile(_env, article.PdfFilePath);
+                article.PdfFilePath = await UploadHelper.SaveAsync(_env, pdfFile, "published", $"published_{article.Id}_");
             }
 
             if (originalFile != null && originalFile.Length > 0)
             {
-                var ext = Path.GetExtension(originalFile.FileName).ToLowerInvariant();
-
-                var allowed = new[] { ".doc", ".docx", ".pdf" };
-
-                if (!allowed.Contains(ext))
-                {
-                    TempData["Error"] = "Makale dosyası yalnızca .doc, .docx veya .pdf olabilir.";
-                    return RedirectToAction("EditPublishedArticleFile", new { id });
-                }
-
-                var fileName = $"source_{article.Id}_{Guid.NewGuid()}{ext}";
-                var filePath = Path.Combine(uploadRoot, fileName);
-
-                using (var stream = new FileStream(filePath, FileMode.Create))
-                {
-                    await originalFile.CopyToAsync(stream);
-                }
-
-                article.OriginalFilePath = "/uploads/published/" + fileName;
+                UploadHelper.TryDeleteWebFile(_env, article.OriginalFilePath);
+                article.OriginalFilePath = await UploadHelper.SaveAsync(_env, originalFile, "published", $"source_{article.Id}_");
             }
 
             var issue = await _context.Issues.FirstOrDefaultAsync(i => i.Id == article.IssueId);

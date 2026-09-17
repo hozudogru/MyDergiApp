@@ -166,7 +166,8 @@ namespace MyDergiApp.Controllers
                 BannerImagePath = settings.BannerImagePath,
                 ShowBanner = settings.ShowBanner,
 
-                HeaderLogoPath = settings.HeaderLogoPath ?? settings.LogoPath,
+                // Eski LogoPath'e dusulmuyor: admin header logosunu kaldirdiginda ana sayfada eski logo gorunmeye devam ediyordu
+                HeaderLogoPath = settings.HeaderLogoPath,
                 HeaderTitle = settings.HeaderTitle ?? settings.SiteTitle ?? "MyDergiApp Journal",
                 HeaderSubtitle = settings.HeaderSubtitle ?? settings.Subtitle,
                 HeaderRightText = settings.HeaderRightText ?? "Akademik Dergi Platformu",

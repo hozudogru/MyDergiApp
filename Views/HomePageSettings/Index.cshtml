@@ -320,9 +320,12 @@
                 Eski Logo alanı kaldırıldı.
             </div>
 
-            <div class="form-check form-switch mb-4">
+            <div class="form-check form-switch mb-1">
                 <input asp-for="IsActive" class="form-check-input" />
                 <label asp-for="IsActive" class="form-check-label">Aktif</label>
+            </div>
+            <div class="form-text mb-4">
+                Kapatılırsa ana sayfa bu ayarları tamamen yok sayar ve yerleşik varsayılan metinlere döner (iletişim, ISSN ve logo dahil).
             </div>
 
             <button type="submit" class="btn btn-primary px-4">Kaydet</button>

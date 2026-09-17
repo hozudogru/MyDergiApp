@@ -217,6 +217,16 @@
                                                        class="btn btn-sm btn-primary action-btn">
                                                     <i class="bi bi-search me-1"></i> İncele
                                                 </a>
+
+                                                <form asp-controller="Reviewer" asp-action="Decline" method="post" class="d-inline"
+                                                      onsubmit="var r = prompt('Atamayı reddetme gerekçeniz (isteğe bağlı):'); if (r === null) return false; this.reason.value = r; return true;">
+                                                    @Html.AntiForgeryToken()
+                                                    <input type="hidden" name="submissionId" value="@item.Id" />
+                                                    <input type="hidden" name="reason" value="" />
+                                                    <button type="submit" class="btn btn-sm btn-outline-danger action-btn" title="Bu hakemlik atamasını reddet">
+                                                        <i class="bi bi-x-circle me-1"></i> Reddet
+                                                    </button>
+                                                </form>
                                             }
                                             else if (myReview.IsDraft)
                                             {

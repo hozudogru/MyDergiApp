@@ -30,6 +30,5 @@ namespace MyDergiApp.Models
         public string? FullIssuePdfPath { get; set; }
 
         public ICollection<PublishedArticle> Articles { get; set; } = new List<PublishedArticle>();
-        public ICollection<IssueArticle> IssueArticles { get; set; } = new List<IssueArticle>();
     }
 }

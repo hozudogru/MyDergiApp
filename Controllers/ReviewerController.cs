@@ -14,15 +14,104 @@ namespace MyDergiApp.Controllers
         private readonly AppDbContext _context;
         private readonly UserManager<AppUser> _userManager;
         private readonly EmailService _emailService;
+        private readonly IWebHostEnvironment _env;
 
         public ReviewerController(
             AppDbContext context,
             UserManager<AppUser> userManager,
-            EmailService emailService)
+            EmailService emailService,
+            IWebHostEnvironment env)
         {
             _context = context;
             _userManager = userManager;
             _emailService = emailService;
+            _env = env;
+        }
+
+        /// <summary>
+        /// Hakem, kendisine yapilan guncel tur atamasini reddeder (cikar catismasi, zaman yok vb.).
+        /// Onceden ReviewerAssignmentStatus.Declined hic set edilmiyordu; hakemin tek secenegi sessiz kalmakti.
+        /// </summary>
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> Decline(int submissionId, string? reason)
+        {
+            var user = await _userManager.GetUserAsync(User);
+            if (user == null)
+                return Challenge();
+
+            var submission = await _context.Submissions.FirstOrDefaultAsync(s => s.Id == submissionId);
+            if (submission == null)
+                return NotFound();
+
+            var assignment = await _context.SubmissionReviewers
+                .FirstOrDefaultAsync(x =>
+                    x.SubmissionId == submissionId &&
+                    x.ReviewerId == user.Id &&
+                    x.ReviewRound == submission.CurrentReviewRound);
+
+            if (assignment == null)
+            {
+                TempData["Error"] = "Bu makale için aktif hakem atamanız bulunmamaktadır.";
+                return RedirectToAction(nameof(Index));
+            }
+
+            if (assignment.Status == ReviewerAssignmentStatus.Completed)
+            {
+                TempData["Error"] = "Nihai gönderilmiş bir değerlendirme reddedilemez.";
+                return RedirectToAction(nameof(Index));
+            }
+
+            if (assignment.Status == ReviewerAssignmentStatus.Cancelled ||
+                assignment.Status == ReviewerAssignmentStatus.Declined)
+            {
+                TempData["Error"] = "Bu atama zaten kapatılmış.";
+                return RedirectToAction(nameof(Index));
+            }
+
+            assignment.Status = ReviewerAssignmentStatus.Declined;
+            assignment.CancelledAt = DateTime.UtcNow;
+            assignment.CancelledByUserId = user.Id;
+            assignment.CancelReason = string.IsNullOrWhiteSpace(reason)
+                ? "Hakem atamayı reddetti."
+                : "Hakem reddetti: " + reason.Trim();
+
+            // Turda aktif hakem kalmadiysa editorun yeniden atama yapmasi icin durum geri alinir
+            var remainingActive = await _context.SubmissionReviewers.AnyAsync(sr =>
+                sr.SubmissionId == submissionId &&
+                sr.Id != assignment.Id &&
+                sr.ReviewRound == submission.CurrentReviewRound &&
+                sr.Status != ReviewerAssignmentStatus.Cancelled &&
+                sr.Status != ReviewerAssignmentStatus.Declined);
+
+            if (!remainingActive && submission.Status == SubmissionStatus.HakemDegerlendirmesinde)
+            {
+                submission.Status = SubmissionStatus.HakemAtamasiBekliyor;
+                submission.UpdatedAt = DateTime.UtcNow;
+            }
+
+            await _context.SaveChangesAsync();
+
+            // Atanmis alan editorune bildir (gonderilemezse loglanir, akis bozulmaz)
+            var editorEmail = string.IsNullOrEmpty(submission.AssignedSectionEditorId)
+                ? null
+                : (await _userManager.FindByIdAsync(submission.AssignedSectionEditorId))?.Email;
+
+            if (!string.IsNullOrWhiteSpace(editorEmail))
+            {
+                await _emailService.SendEmailAsync(
+                    editorEmail,
+                    $"Hakem atamayı reddetti #{submission.Id}",
+                    $"""
+                    <p><strong>{System.Net.WebUtility.HtmlEncode(submission.Title)}</strong> makalesi için
+                    {submission.CurrentReviewRound}. tur hakem ataması reddedildi.</p>
+                    <p><strong>Gerekçe:</strong> {System.Net.WebUtility.HtmlEncode(assignment.CancelReason)}</p>
+                    <p>Editör panelinden yeni hakem atayabilirsiniz.</p>
+                    """);
+            }
+
+            TempData["Success"] = "Hakem ataması reddedildi; editör bilgilendirildi.";
+            return RedirectToAction(nameof(Index));
         }
 
         [HttpGet]
@@ -353,13 +442,7 @@ namespace MyDergiApp.Controllers
                     return RedirectToAction(nameof(Review), new { id = submissionId });
                 }
 
-                var root = Path.Combine(
-                    Directory.GetCurrentDirectory(),
-                    "wwwroot",
-                    "uploads",
-                    "submissions",
-                    "reviewer-files"
-                );
+                var root = Path.Combine(_env.WebRootPath, "uploads", "submissions", "reviewer-files");
 
                 if (!Directory.Exists(root))
                     Directory.CreateDirectory(root);

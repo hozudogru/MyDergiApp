@@ -2,7 +2,6 @@ using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
 using MyDergiApp.Entities;
 using MyDergiApp.Models;
-using System.Reflection.Emit;
 
 namespace MyDergiApp.Data;
 
@@ -24,7 +23,6 @@ public class AppDbContext : IdentityDbContext<AppUser>
     public DbSet<SubmissionFile> SubmissionFiles { get; set; }
     public DbSet<SubmissionAuthor> SubmissionAuthors { get; set; }
     public DbSet<PublishedArticle> PublishedArticles { get; set; }
-    public DbSet<IssueArticle> IssueArticles { get; set; }
     public DbSet<SmtpSetting> SmtpSettings { get; set; }
 
 
@@ -88,16 +86,19 @@ public class AppDbContext : IdentityDbContext<AppUser>
             .WithMany()
             .HasForeignKey(sf => sf.UploadedByUserId)
             .OnDelete(DeleteBehavior.SetNull);
-        builder.Entity<IssueArticle>()
-            .HasOne(x => x.Issue)
-            .WithMany(x => x.IssueArticles)
-            .HasForeignKey(x => x.IssueId)
-            .OnDelete(DeleteBehavior.Cascade);
+        // IssueArticle tablosu kaldirildi (hic kullanilmiyordu; PublishedArticle ayni isi yapiyor).
 
-        builder.Entity<IssueArticle>()
+        // Yayinlanmis makale, gonderi silinirse sessizce kaybolmasin: Restrict.
+        builder.Entity<PublishedArticle>()
             .HasOne(x => x.Submission)
             .WithMany()
             .HasForeignKey(x => x.SubmissionId)
             .OnDelete(DeleteBehavior.Restrict);
+
+        builder.Entity<PublishedArticle>()
+            .HasOne(x => x.Issue)
+            .WithMany(x => x.Articles)
+            .HasForeignKey(x => x.IssueId)
+            .OnDelete(DeleteBehavior.Cascade);
     }
 }

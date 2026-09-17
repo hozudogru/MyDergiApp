@@ -29,8 +29,7 @@
                 <td>@item.CreatedAt.ToLocalTime().ToString("dd.MM.yyyy HH:mm")</td>
                 <td>
                     <a asp-action="Detail" asp-route-id="@item.Id" class="btn btn-sm btn-info">Detay</a>
-                    <a asp-action="Edit" asp-route-id="@item.Id" class="btn btn-sm btn-warning">Düzenle</a>
-                    <a asp-action="UpdateStatus" asp-route-id="@item.Id" class="btn btn-sm btn-secondary">Durum</a>
+                    @* Edit / UpdateStatus action'lari yok (404 veriyordu); durum degisiklikleri is akisi ekranlarindan yapilir *@
                 </td>
             </tr>
         }

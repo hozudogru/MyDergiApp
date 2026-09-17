@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using MyDergiApp.Data;
+using MyDergiApp.Helpers;
 using MyDergiApp.Models;
 using System.Linq;
 
@@ -193,111 +194,57 @@ if (removeBannerImage)
     settings.BannerImagePath = null;
 }
             settings.ShowHeaderLogo = model.ShowHeaderLogo;
+            // Kaldirma bayraklari: eski dosya diskten de silinir (yetim dosya birikmesin)
             if (removeHeaderLogo)
             {
+                UploadHelper.TryDeleteWebFile(_env, settings.HeaderLogoPath);
+                UploadHelper.TryDeleteWebFile(_env, settings.LogoPath);
                 settings.HeaderLogoPath = null;
+                settings.LogoPath = null; // eski alan; ana sayfada fallback olarak gorunmeye devam ediyordu
             }
 
             if (removeHeaderBackgroundImage)
             {
+                UploadHelper.TryDeleteWebFile(_env, settings.HeaderBackgroundImagePath);
                 settings.HeaderBackgroundImagePath = null;
             }
 
             if (removeBannerImage)
             {
+                UploadHelper.TryDeleteWebFile(_env, settings.BannerImagePath);
                 settings.BannerImagePath = null;
             }
-            if (headerLogo != null && headerLogo.Length > 0)
-            {
-                var allowedExtensions = new[] { ".jpg", ".jpeg", ".png", ".webp" };
-                var ext = Path.GetExtension(headerLogo.FileName).ToLowerInvariant();
 
-                if (!allowedExtensions.Any(x => x == ext))
+            // Gorsel yuklemeleri: uzanti + boyut dogrulamasi, eski dosya silinir, yeni dosya kaydedilir
+            var imageUploads = new (IFormFile? File, string Field, string Label, string Prefix, Func<string?> GetOld, Action<string> SetNew)[]
+            {
+                (headerLogo, "HeaderLogoPath", "Header logosu", "header-logo-", () => settings.HeaderLogoPath, p => settings.HeaderLogoPath = p),
+                (headerBackgroundImage, "HeaderBackgroundImagePath", "Header arka plan görseli", "header-bg-", () => settings.HeaderBackgroundImagePath, p => settings.HeaderBackgroundImagePath = p),
+                (heroImage, "LogoPath", "Logo görseli", "logo-", () => settings.LogoPath, p => settings.LogoPath = p),
+                (bannerImage, "BannerImagePath", "Banner görseli", "banner-", () => settings.BannerImagePath, p => settings.BannerImagePath = p),
+            };
+
+            foreach (var upload in imageUploads)
+            {
+                if (upload.File == null || upload.File.Length == 0)
+                    continue;
+
+                var error = UploadHelper.Validate(upload.File, UploadHelper.ImageExtensions, UploadHelper.MaxImageBytes, upload.Label);
+
+                if (error != null)
                 {
-                    ModelState.AddModelError("HeaderLogoPath", "Sadece jpg, jpeg, png veya webp logo yüklenebilir.");
+                    ModelState.AddModelError(upload.Field, error);
                     return View(model);
                 }
-
-                var folder = Path.Combine(_env.WebRootPath, "uploads", "homepage");
-                Directory.CreateDirectory(folder);
-
-                var fileName = $"header-logo-{Guid.NewGuid()}{ext}";
-                var fullPath = Path.Combine(folder, fileName);
-
-                await using var headerLogoStream = new FileStream(fullPath, FileMode.Create);
-                await headerLogo.CopyToAsync(headerLogoStream);
-
-                settings.HeaderLogoPath = $"/uploads/homepage/{fileName}";
             }
 
-            if (headerBackgroundImage != null && headerBackgroundImage.Length > 0)
+            foreach (var upload in imageUploads)
             {
-                var allowedExtensions = new[] { ".jpg", ".jpeg", ".png", ".webp" };
-                var ext = Path.GetExtension(headerBackgroundImage.FileName).ToLowerInvariant();
+                if (upload.File == null || upload.File.Length == 0)
+                    continue;
 
-                if (!allowedExtensions.Any(x => x == ext))
-                {
-                    ModelState.AddModelError("HeaderBackgroundImagePath", "Sadece jpg, jpeg, png veya webp arka plan görseli yüklenebilir.");
-                    return View(model);
-                }
-
-                var folder = Path.Combine(_env.WebRootPath, "uploads", "homepage");
-                Directory.CreateDirectory(folder);
-
-                var fileName = $"header-bg-{Guid.NewGuid()}{ext}";
-                var fullPath = Path.Combine(folder, fileName);
-
-                await using var headerBgStream = new FileStream(fullPath, FileMode.Create);
-                await headerBackgroundImage.CopyToAsync(headerBgStream);
-
-                settings.HeaderBackgroundImagePath = $"/uploads/homepage/{fileName}";
-            }
-            // Logo / ana görsel yükleme
-            if (heroImage != null && heroImage.Length > 0)
-            {
-                var allowedExtensions = new[] { ".jpg", ".jpeg", ".png", ".webp" };
-                var ext = Path.GetExtension(heroImage.FileName).ToLowerInvariant();
-
-                if (!allowedExtensions.Any(x => x == ext))
-                {
-                    ModelState.AddModelError("LogoPath", "Sadece jpg, jpeg, png veya webp görsel yüklenebilir.");
-                    return View(model);
-                }
-
-                var folder = Path.Combine(_env.WebRootPath, "uploads", "homepage");
-                Directory.CreateDirectory(folder);
-
-                var fileName = $"logo-{Guid.NewGuid()}{ext}";
-                var fullPath = Path.Combine(folder, fileName);
-
-                await using var logoStream = new FileStream(fullPath, FileMode.Create);
-                await heroImage.CopyToAsync(logoStream);
-
-                settings.LogoPath = $"/uploads/homepage/{fileName}";
-            }
-
-            // Banner görseli yükleme
-            if (bannerImage != null && bannerImage.Length > 0)
-            {
-                var allowedExtensions = new[] { ".jpg", ".jpeg", ".png", ".webp" };
-                var ext = Path.GetExtension(bannerImage.FileName).ToLowerInvariant();
-
-                if (!allowedExtensions.Any(x => x == ext))
-                {
-                    ModelState.AddModelError("BannerImagePath", "Sadece jpg, jpeg, png veya webp banner görseli yüklenebilir.");
-                    return View(model);
-                }
-
-                var folder = Path.Combine(_env.WebRootPath, "uploads", "homepage");
-                Directory.CreateDirectory(folder);
-
-                var fileName = $"banner-{Guid.NewGuid()}{ext}";
-                var fullPath = Path.Combine(folder, fileName);
-
-                await using var bannerStream = new FileStream(fullPath, FileMode.Create);
-                await bannerImage.CopyToAsync(bannerStream);
-
-                settings.BannerImagePath = $"/uploads/homepage/{fileName}";
+                UploadHelper.TryDeleteWebFile(_env, upload.GetOld());
+                upload.SetNew(await UploadHelper.SaveAsync(_env, upload.File, "homepage", upload.Prefix));
             }
 
             settings.UpdatedAt = DateTime.UtcNow;

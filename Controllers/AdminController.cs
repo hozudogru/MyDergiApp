@@ -66,7 +66,8 @@ namespace MyDergiApp.Controllers
                 TotalIssues = await _context.Issues.CountAsync(),
                 PublishedIssues = await _context.Issues.CountAsync(x => x.IsPublished),
 
-                TotalPublishedArticles = await _context.PublishedArticles.CountAsync(),
+                // Ana sayfa sayaciyla ayni tanim: yalnizca yayindaki sayilardaki makaleler
+                TotalPublishedArticles = await _context.PublishedArticles.CountAsync(x => x.Issue != null && x.Issue.IsPublished),
                 TotalIndexes = await _context.JournalIndexes.CountAsync(x => x.IsActive),
                 HasHomePageSettings = await _context.HomePageSettings.AnyAsync(x => x.IsActive),
 

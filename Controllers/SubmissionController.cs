@@ -91,7 +91,7 @@ namespace MyDergiApp.Controllers
             }
 
             var relativeFolder = folderPath
-                .Replace(Path.Combine(Directory.GetCurrentDirectory(), "wwwroot"), "")
+                .Replace(_env.WebRootPath, "")
                 .Replace("\\", "/");
 
             var relativePath = $"{relativeFolder}/{generatedFileName}";
@@ -689,7 +689,7 @@ namespace MyDergiApp.Controllers
             if (correspondingAuthor != null && !string.IsNullOrWhiteSpace(correspondingAuthor.Email))
             {
                 var templatePath = Path.Combine(
-                    Directory.GetCurrentDirectory(),
+                    _env.ContentRootPath,
                     "Templates",
                     "EditorDecisionEmailTemplate.html");
 
@@ -726,9 +726,23 @@ namespace MyDergiApp.Controllers
             """;
                 }
 
+                // Yalnizca karara konu olan (guncel) turun raporlari gonderilir; onceden tum turlarin raporlari
+                // her kararda yeniden gidiyordu. Guncel turda rapor yoksa raporu olan en son tura dusulur.
+                var decisionRound = submission.CurrentReviewRound <= 0 ? 1 : submission.CurrentReviewRound;
+
+                var roundsWithReports = submission.Reviews
+                    .Where(r => !r.IsDraft && r.SubmittedAt != null)
+                    .Select(r => r.ReviewRound <= 0 ? 1 : r.ReviewRound)
+                    .Distinct()
+                    .ToList();
+
+                if (!roundsWithReports.Contains(decisionRound) && roundsWithReports.Count > 0)
+                    decisionRound = roundsWithReports.Max();
+
                 var completedReviews = submission.Reviews
                     .Where(r =>
                         !r.IsDraft &&
+                        (r.ReviewRound <= 0 ? 1 : r.ReviewRound) == decisionRound &&
                         (
                             r.SubmittedAt != null ||
                             !string.IsNullOrWhiteSpace(r.Decision) ||
@@ -874,7 +888,7 @@ namespace MyDergiApp.Controllers
                     System.Net.WebUtility.HtmlEncode(decisionText));
 
                 html = html.Replace("{{ReviewRound}}",
-                    System.Net.WebUtility.HtmlEncode($"{submission.CurrentReviewRound}. Tur"));
+                    System.Net.WebUtility.HtmlEncode($"{decisionRound}. Tur"));
 
                 html = html.Replace("{{DecisionNote}}",
                     string.IsNullOrWhiteSpace(submission.DecisionNote)
@@ -1255,7 +1269,7 @@ namespace MyDergiApp.Controllers
                 });
             }
 
-            var root = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "uploads", "submissions");
+            var root = Path.Combine(_env.WebRootPath, "uploads", "submissions");
             var newRound = submission.CurrentReviewRound + 1;
 
             await SaveSubmissionFileAsync(submission.Id, model.MainManuscriptFile, "MakaleDosyasi", Path.Combine(root, "main"), user.Id);
@@ -1378,12 +1392,7 @@ namespace MyDergiApp.Controllers
                 return View(model);
             }
 
-            var root = Path.Combine(
-                  Directory.GetCurrentDirectory(),
-                  "wwwroot",
-                  "uploads",
-                  "submissions"
-              );
+            var root = Path.Combine(_env.WebRootPath, "uploads", "submissions");
 
             var isPreCheckReturn = submission.Status == SubmissionStatus.YazaraIadeEdildi;
 
@@ -1871,10 +1880,7 @@ namespace MyDergiApp.Controllers
                 .Replace("\\", "/")
                 .TrimStart('/');
 
-            var physicalPath = Path.Combine(
-                Directory.GetCurrentDirectory(),
-                "wwwroot",
-                relativePath);
+            var physicalPath = Path.Combine(_env.WebRootPath, relativePath);
 
             if (!System.IO.File.Exists(physicalPath))
                 return NotFound();
@@ -1926,10 +1932,7 @@ namespace MyDergiApp.Controllers
                 .Replace("\\", "/")
                 .TrimStart('/');
 
-            var physicalPath = Path.Combine(
-                Directory.GetCurrentDirectory(),
-                "wwwroot",
-                relativePath);
+            var physicalPath = Path.Combine(_env.WebRootPath, relativePath);
 
             if (!System.IO.File.Exists(physicalPath))
                 return NotFound();
